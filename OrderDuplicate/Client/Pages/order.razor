@@ -1,0 +1,119 @@
+﻿@page "/Counter/{Id:int}/order"  
+@using System.Net.Http.Json  
+@using OrderDuplicate.Application.Common.Models  
+@using OrderDuplicate.Application.Features.Order.DTOs  
+@using OrderDuplicate.Application.Features.Counter.DTOs  
+@using OrderDuplicate.Application.Model  
+@using OrderDuplicate.Application.Model.Counter  
+@using Microsoft.AspNetCore.Authorization  
+@using Microsoft.Extensions.Logging  
+
+@attribute [Authorize]  
+@inject HttpClient Http  
+@inject ILogger<Counter> Logger  
+
+<h3>Order Details</h3>  
+
+@if (order == null)  
+{  
+   <p><em>Loading...</em></p>  
+}  
+else  
+{  
+   <div>  
+       <h4>Order Number: @order.OrderNumber</h4>  
+       <h5>Items:</h5>  
+       <table class="table">  
+           <thead>  
+               <tr>  
+                   <th>Name</th>  
+                   <th>Quantity</th>  
+                   <th>Price</th>  
+                   <th>Total</th>  
+               </tr>  
+           </thead>  
+           <tbody>  
+               @foreach (var item in order.Items)  
+               {  
+                   <tr>  
+                       <td>@item.Name</td>  
+                       <td>@item.Quantity</td>  
+                       <td>@item.Price</td>  
+                       <td>@(item.Quantity * item.Price)</td>  
+                   </tr>  
+               }  
+           </tbody>  
+       </table>  
+       <button class="btn btn-primary" @onclick="ShowAddItemModal">Add Item</button>  
+       <button class="btn btn-primary" @onclick="Checkout">Checkout</button>  
+   </div>  
+}  
+
+<EditForm Model="newItem" OnValidSubmit="AddItemToOrder">  
+   <DataAnnotationsValidator />  
+   <ValidationSummary />  
+   <div class="form-group">  
+       <label for="name">Name</label>  
+       <InputText id="name" class="form-control" @bind-Value="newItem.Name" />  
+   </div>  
+   <div class="form-group">  
+       <label for="quantity">Quantity</label>  
+       <InputNumber id="quantity" class="form-control" @bind-Value="newItem.Quantity" />  
+   </div>  
+   <div class="form-group">  
+       <label for="price">Price</label>  
+       <InputNumber id="price" class="form-control" @bind-Value="newItem.Price" />  
+   </div>  
+   <button type="submit" class="btn btn-primary">Add to Cart</button>  
+</EditForm>  
+
+@code {  
+   [Parameter]  
+   public int Id { get; set; }  
+
+   private OrderDto order;  
+   private OrderLineItemDto newItem = new OrderLineItemDto();  
+
+   protected override async Task OnInitializedAsync()  
+   {  
+       try  
+       {  
+           order = await Http.GetFromJsonAsync<OrderDto>($"api/orders/{Id}");  
+       }  
+       catch (Exception ex)  
+       {  
+           Logger.LogError(ex, "Error loading order");  
+       }  
+   }  
+
+   private void ShowAddItemModal()  
+   {  
+       // Logic to show modal  
+   }  
+
+   private async Task AddItemToOrder()  
+   {  
+       order.Items.Add(newItem);  
+       newItem = new OrderLineItemDto();  
+   }  
+
+   private async Task Checkout()  
+   {  
+       try  
+       {  
+           var response = await Http.PostAsJsonAsync($"api/orders/{Id}/checkout", order);  
+           if (response.IsSuccessStatusCode)  
+           {  
+               // Handle successful checkout  
+           }  
+           else  
+           {  
+               // Handle error  
+           }  
+       }  
+       catch (Exception ex)  
+       {  
+           Logger.LogError(ex, "Error during checkout");  
+       }  
+   }  
+}

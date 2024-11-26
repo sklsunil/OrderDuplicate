@@ -1,0 +1,114 @@
+﻿@page "/"
+@using OrderDuplicate.Application.Common.Models;
+@using OrderDuplicate.Application.Features.Counter.DTOs;
+@using Newtonsoft;
+@using OrderDuplicate.Application.Model
+@inject NavigationManager Navigation
+@inject IJSRuntime JsRuntime
+
+<PageTitle>Index</PageTitle>
+
+@inject HttpClient Http
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+
+@if (paginatedData == null || paginatedData.Items == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="col-md-12">
+        <ul class="list-inline m-0">
+            <li class="list-inline-item">
+                <input placeholder="Search by counter" @bind="CounterName" @bind:event="oninput" @onkeyup="SearchByCounterName"></input>
+            </li>
+            <li class="list-inline-item">
+                <a class="btn btn-primary btn-sm rounded-0" href="Counter/0" title="Add New">Add Counter</a>
+            </li>
+        </ul>
+    </div>
+
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Counter Name</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var Counter in paginatedData.Items)
+            {
+                <tr>
+                    <td>@Counter.CounterName</td>
+                    <td>
+                        <ul class="list-inline m-0">
+                            <li class="list-inline-item">
+                                <a class="btn btn-success btn-sm rounded-0" type="button" title="Login" @onclick="@(async _=> await Order(Counter.Id))">Login</a>
+                            </li>
+                            <li class="list-inline-item">
+                                <a class="btn btn-primary btn-sm rounded-0" type="button" title="Edit" @onclick="@(async _=> await Edit(Counter.Id))">Edit</a>
+                            </li>
+                            <li class="list-inline-item">
+                                <a class="btn btn-danger btn-sm rounded-0" type="button" title="Delete" @onclick="@(async _=> await Delete(Counter.Id))">Delete</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private PaginatedData<CounterDto>? paginatedData;
+    private string CounterName { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCounter();
+    }
+    private async Task LoadCounter()
+    {
+        var data = await Http.GetStringAsync("Counter");
+        paginatedData = Newtonsoft.Json.JsonConvert.DeserializeObject<PaginatedData<CounterDto>>(data);
+    }
+
+    private async Task Edit(int counterId)
+    {
+        Navigation.NavigateTo($"Counter/{counterId}");
+        await Task.CompletedTask;
+    }
+    private async Task Order(int counterId)
+    {
+        Navigation.NavigateTo($"Counter/{counterId}/order");
+        await Task.CompletedTask;
+    }
+
+    private async Task Delete(int counterId)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await Http.DeleteAsync($"Counter/{counterId}");
+            await LoadCounter();
+        }
+    }
+    private async Task SearchByCounterName(KeyboardEventArgs name)
+    {
+        if (string.IsNullOrWhiteSpace(CounterName))
+        {
+            await LoadCounter();
+        }
+        else
+        {
+            var data = await Http.GetStringAsync($"Counter?AdvancedSearch.Fields=CounterName&AdvancedSearch.Keyword={CounterName}&Keyword={CounterName}");
+            paginatedData = Newtonsoft.Json.JsonConvert.DeserializeObject<PaginatedData<CounterDto>>(data);
+        }
+    }
+}

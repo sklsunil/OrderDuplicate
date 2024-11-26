@@ -1,0 +1,130 @@
+﻿@page "/Counter/{Id:int}"
+@using System.Net
+@using System.Net.Http.Json
+@using OrderDuplicate.Application.Common.Models;
+@using OrderDuplicate.Application.Features.Order.DTOs;
+@using OrderDuplicate.Application.Features.Counter.DTOs;
+@using OrderDuplicate.Application.Model
+@using OrderDuplicate.Application.Model.Counter;
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Logging
+
+
+@attribute [Authorize]
+@inject HttpClient Http
+@inject ILogger<Counter> Logger
+
+
+<h2>Counter Form</h2>
+
+<EditForm Model="@updateCounter" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <CustomValidation @ref="customValidation" />
+    <ValidationSummary />
+    @if (!error)
+    {
+        <p>
+            <label>
+                Name:
+                <InputText @bind-Value="updateCounter.CounterName" disabled="@disabled" />
+            </label>
+        </p>
+        <p>
+            <label>
+                PersonId:
+                <InputNumber @bind-Value="updateCounter.PersonId"
+                             disabled="@disabled" />
+            </label>
+        </p>
+        <button type="submit" disabled="@disabled">Submit</button>
+
+        <p style="@messageStyles">
+            @message
+        </p>
+    }
+    else
+    {
+        <p style="@messageStyles">
+            @message
+        </p>
+    }
+    <a href="/">Back to List</a>
+
+</EditForm>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool disabled;
+    private string? message;
+    private string? messageStyles = "visibility:hidden";
+    private CustomValidation? customValidation;
+    private UpdateCounterModel updateCounter = new();
+    private bool error = false;
+
+    private PaginatedData<OrderDto> paginatedData;
+
+    private async Task HandleValidSubmit(EditContext editContext)
+    {
+        customValidation?.ClearErrors();
+
+        try
+        {
+            HttpResponseMessage response = new();
+            if (Id == 0)
+                response = await Http.PostAsJsonAsync<UpdateCounterModel>(
+                   "Counter", (UpdateCounterModel)editContext.Model);
+            else
+            {
+                response = await Http.PutAsJsonAsync<UpdateCounterModel>(
+                    $"Counter/{Id}", (UpdateCounterModel)editContext.Model);
+            }
+
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"Validation failed. Status Code: {response.StatusCode}");
+            }
+            messageStyles = "color:green";
+            message = Id == 0 ? "Counter Save Successfully" : "Counter Update Successfully";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Form processing error: {Message}", ex.Message);
+            disabled = false;
+            messageStyles = "color:red";
+            message = "There was an error processing the form.";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id != 0)
+        {
+            var counter = await Http.GetStringAsync($"Counter?PageNumber=1&PageSize=1&AdvancedSearch.Fields=Id&AdvancedSearch.Keyword={Id}&Keyword={Id}");
+            if (counter != null)
+            {
+                var res = Newtonsoft.Json.JsonConvert.DeserializeObject<PaginatedData<CounterDto>>(counter);
+                if (res != null && res.Items?.Count() > 0)
+                {
+                    var result = res.Items.FirstOrDefault();
+                    if (result != null)
+                    {
+                        updateCounter = new UpdateCounterModel();
+                        updateCounter.Id = result.Id;
+                        updateCounter.PersonId = result.PersonId;
+                        updateCounter.CounterName = result.CounterName;
+                    }
+                }
+                else
+                {
+                    error = true;
+                    messageStyles = "color:red";
+                    message = "Counter not found";
+                }
+            }
+        }
+    }
+}
