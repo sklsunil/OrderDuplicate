@@ -6,6 +6,7 @@ using OrderDuplicate.Application.Common.Models;
 using OrderDuplicate.Application.Features.Counter.Commands.Create;
 using OrderDuplicate.Application.Features.Counter.Commands.Delete;
 using OrderDuplicate.Application.Features.Counter.Commands.Update;
+using OrderDuplicate.Application.Features.Counter.Queries.GetAll;
 using OrderDuplicate.Application.Features.Counter.Queries.Pagination;
 using OrderDuplicate.Application.Model.Counter;
 
@@ -37,6 +38,13 @@ namespace OrderDuplicate.Server.Controllers
                 PageNumber = request.PageNumber,
                 SortDirection = request.SortDirection,
             };
+            return Ok(await _mediator.Send(query).ConfigureAwait(false));
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IActionResult> GetByName([FromQuery] string name)
+        {
+            var query = new CounterGetByNameQuery { Name = name };
             return Ok(await _mediator.Send(query).ConfigureAwait(false));
         }
 

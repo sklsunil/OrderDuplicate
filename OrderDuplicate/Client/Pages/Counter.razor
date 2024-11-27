@@ -71,24 +71,35 @@
 
         try
         {
-            HttpResponseMessage response = new();
-            if (Id == 0)
-                response = await Http.PostAsJsonAsync<UpdateCounterModel>(
-                   "Counter", (UpdateCounterModel)editContext.Model);
+            var model = (UpdateCounterModel)editContext.Model;
+            if ((await IsNameExists(model.CounterName)) && Id == 0)
+            {
+
+                disabled = false;
+                messageStyles = "color:red";
+                message = "Name already exists.";
+            }
             else
             {
-                response = await Http.PutAsJsonAsync<UpdateCounterModel>(
-                    $"Counter/{Id}", (UpdateCounterModel)editContext.Model);
-            }
+                HttpResponseMessage response = new();
+                if (Id == 0)
+                    response = await Http.PostAsJsonAsync<UpdateCounterModel>(
+                       "Counter", model);
+                else
+                {
+                    response = await Http.PutAsJsonAsync<UpdateCounterModel>(
+                        $"Counter/{Id}", model);
+                }
 
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException(
-                    $"Validation failed. Status Code: {response.StatusCode}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException(
+                        $"Validation failed. Status Code: {response.StatusCode}");
+                }
+                messageStyles = "color:green";
+                message = Id == 0 ? "Counter Save Successfully" : "Counter Update Successfully";
             }
-            messageStyles = "color:green";
-            message = Id == 0 ? "Counter Save Successfully" : "Counter Update Successfully";
         }
         catch (Exception ex)
         {
@@ -97,6 +108,24 @@
             messageStyles = "color:red";
             message = "There was an error processing the form.";
         }
+    }
+
+    public async Task<bool> IsNameExists(string name)
+    {
+        try
+        {
+            var counter = await Http.GetStringAsync($"Counter/GetByName?name={name}");
+            if (counter != null)
+            {
+                var res = Newtonsoft.Json.JsonConvert.DeserializeObject<Result<CounterDto>>(counter);
+                return res?.Data != null;
+            }
+        }
+        catch (Exception ex)
+        {
+            return false;
+        }
+        return false;
     }
 
     protected override async Task OnInitializedAsync()
