@@ -38,17 +38,54 @@
     .font-weight-bold {
         font-weight: bold;
     }
+
+    @@keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+
+        40% {
+            transform: translateY(-30px);
+        }
+
+        60% {
+            transform: translateY(-15px);
+        }
+    }
+
+    .playful-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh; /* Full viewport height */
+        text-align: center;
+        background: linear-gradient(45deg, #ff9a9e, #fad0c4); /* Playful gradient background */
+        color: white; /* Text color */
+        font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif; /* Playful font */
+        animation: bounce 2s infinite; /* Bouncing animation */
+    }
+
+        .playful-center h1 {
+            font-size: 3rem; /* Large text size */
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Add text shadow for depth */
+        }
+
 </style>
 <div style="text-align: center;">
-    <h1>Welcome at Counter: @CounterSessionId</h1>    
+    <h1>Welcome at Counter: @CounterSessionId</h1>
 </div>
-@if (order == null)
+@if (order == null && string.IsNullOrWhiteSpace(globalMessage))
 {
     <p><em>Loading...</em></p>
 }
+else if (globalMessage != string.Empty)
+{
+    <div class="playful-center">
+        <h1>@globalMessage</h1>
+    </div>
+}
 else
 {
-
     <h3>Order Details: @order.OrderNumber</h3>
     <div>
         <h5>Items:</h5>
@@ -91,6 +128,7 @@ else
 
     private string? webSoketUrl;
     private WebsocketClient? websocketClient;
+    private string globalMessage = string.Empty;
 
     private async Task CreateClient()
     {
@@ -103,7 +141,17 @@ else
             {
                 if (msg != null && msg.Text != null)
                 {
-                    order = JsonSerializer.Deserialize<OrderDto>(msg.ToString());
+                    var message = msg.ToString();
+                    if (message.Contains("Counter Closed!", StringComparison.OrdinalIgnoreCase))
+                    {
+                        globalMessage = message;
+                        order = null;
+                    }
+                    else
+                    {
+                        globalMessage = string.Empty;
+                        order = JsonSerializer.Deserialize<OrderDto>(message);
+                    }
                 }
                 StateHasChanged();
             });

@@ -1,0 +1,95 @@
+﻿@page "/Admin"
+@using System.Net
+@using System.Net.Http.Json
+@using OrderDuplicate.Application.Common.Models;
+@using OrderDuplicate.Application.Features.Order.DTOs;
+@using OrderDuplicate.Application.Features.Counter.DTOs;
+@using OrderDuplicate.Application.Model
+@using OrderDuplicate.Application.Model.Counter;
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Logging
+
+@attribute [Authorize]
+@inject HttpClient Http
+@inject ILogger<Counter> Logger
+<style>
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+    }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+
+    input:checked + .slider {
+        background-color: #2196F3;
+    }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+    .slider.round {
+        border-radius: 34px;
+    }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+</style>
+<div>
+    <div style="text-align: center;">
+        <label>Close all Counter: </label>
+        <label class="switch"> 
+            <input type="checkbox" @onchange="ToggleStatus" checked="@isOn">
+            <span class="slider round"></span>
+        </label>
+    </div>
+</div>
+
+@code {
+    private bool isOn = false;
+
+    private async Task ToggleStatus()
+    {
+        isOn = !isOn;
+        if (isOn) { }
+        var response = await Http.GetAsync("WebPubSub/NotifyAll");
+        if (response.IsSuccessStatusCode)
+        {
+            Logger.LogInformation("Status toggled successfully.");
+        }
+        else
+        {
+            Logger.LogError("Failed to toggle status.");
+        }
+    }
+}
+

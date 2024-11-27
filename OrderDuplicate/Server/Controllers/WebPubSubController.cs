@@ -39,5 +39,12 @@ namespace OrderDuplicate.Server.Controllers
             await _client.SendToUserAsync(counterId.ToString(), content, contentType: ContentType.ApplicationJson);
             return Ok();
         }
+
+        [HttpGet("[action]")]
+        public async Task<IActionResult> NotifyAll()
+        {
+            await _client.SendToAllAsync("Counter Closed!", contentType: ContentType.TextPlain);
+            return Ok();
+        }
     }
 }
