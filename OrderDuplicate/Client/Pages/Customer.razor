@@ -1,0 +1,132 @@
+﻿@page "/Counter/{CounterSessionId:int}/customer";
+@layout NoLayout
+@using OrderDuplicate.Application.Common.Models
+@using OrderDuplicate.Application.Features.Order.DTOs
+@using OrderDuplicate.Application.Service
+@using System.Text.Json
+@using System.Net.WebSockets
+@using Websocket.Client
+
+@inject HttpClient Http
+@implements IAsyncDisposable
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+
+<style>
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .modal {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .text-end {
+        text-align: right;
+    }
+
+    .table-info {
+        background-color: #f8f9fa;
+    }
+
+    .font-weight-bold {
+        font-weight: bold;
+    }
+</style>
+<div style="text-align: center;">
+    <h1>Welcome at Counter: @CounterSessionId</h1>    
+</div>
+@if (order == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+
+    <h3>Order Details: @order.OrderNumber</h3>
+    <div>
+        <h5>Items:</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in order.Items)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.Price.ToString("C")</td>
+                        <td>@(item.Quantity * item.Price)</td>
+                    </tr>
+                }
+                <tr class="table-info font-weight-bold">
+                    <td colspan="3" class="text-end" style="padding-right:70px;"><strong>Grand Total:</strong></td>
+                    <td><strong>@order.TotalAmount.ToString("C")</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public int CounterSessionId { get; set; }
+
+    private OrderDto? order;
+
+    private string? webSoketUrl;
+    private WebsocketClient? websocketClient;
+
+    private async Task CreateClient()
+    {
+        webSoketUrl = await GetUrl();
+        if (!string.IsNullOrWhiteSpace(webSoketUrl) && (websocketClient == null || !websocketClient.IsRunning))
+        {
+            websocketClient = new WebsocketClient(new Uri(webSoketUrl));
+            websocketClient.ReconnectTimeout = null;
+            websocketClient.MessageReceived.Subscribe(msg =>
+            {
+                if (msg != null && msg.Text != null)
+                {
+                    order = JsonSerializer.Deserialize<OrderDto>(msg.ToString());
+                }
+                StateHasChanged();
+            });
+            await websocketClient.Start();
+        }
+    }
+
+    private async Task<string> GetUrl()
+    {
+        return await Http.GetStringAsync($"WebPubSub/Negotiate?counterId={CounterSessionId}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CreateClient();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (websocketClient != null && websocketClient.IsRunning)
+        {
+            await websocketClient.Stop(WebSocketCloseStatus.NormalClosure, "Closing connection");
+
+        }
+    }
+}

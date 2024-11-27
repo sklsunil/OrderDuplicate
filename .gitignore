@@ -1,0 +1,26 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/OrderDuplicate/Client/bin/Debug/net9.0
+/OrderDuplicate/Client/obj
+/OrderDuplicate.Application/bin/Debug/net9.0
+/OrderDuplicate.Application/obj
+/OrderDuplicate.Application.IntegrationTests/bin/Debug/net9.0
+/OrderDuplicate.Application.IntegrationTests/obj
+/OrderDuplicate.Domain/bin/Debug/net9.0
+/OrderDuplicate.Domain/obj
+/OrderDuplicate.Infrastructure/bin/Debug/net9.0
+/OrderDuplicate.Infrastructure/obj
+/OrderDuplicate/Server/bin/Debug/net9.0
+/OrderDuplicate/Server/obj
+/OrderDuplicate/obj
+/OrderDuplicate/Client/bin/Release/net9.0
+/OrderDuplicate/Server/bin/Release/net9.0
+/OrderDuplicate/Server/Properties/PublishProfiles
+/OrderDuplicate/Server/Properties/ServiceDependencies/order-duplicate-poc - Web Deploy
+/OrderDuplicate.Application/bin/Release/net9.0
+/OrderDuplicate.Application.IntegrationTests/bin
+/OrderDuplicate.Domain/bin/Release/net9.0
+/OrderDuplicate.Infrastructure/bin/Release/net9.0

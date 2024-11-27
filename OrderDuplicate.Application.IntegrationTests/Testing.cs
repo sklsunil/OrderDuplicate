@@ -44,7 +44,7 @@ public class Testing
             w.ApplicationName == "OrderDuplicate.Server"));
 
         services.AddInfrastructureServices(_configuration)
-                .AddApplicationServices();
+                .AddApplicationServices(_configuration);
 
 
       

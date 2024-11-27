@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddInfrastructureServices(builder.Configuration)
-              .AddApplicationServices();
+              .AddApplicationServices(builder.Configuration);
 
 builder.Services.AddSwaggerGen();
 

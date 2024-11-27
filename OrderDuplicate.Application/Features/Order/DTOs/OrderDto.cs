@@ -24,6 +24,22 @@ public class OrderDto : IMapFrom<OrderEntity>
     public string CounterPersonId { get; set; }
     public bool IsCheckOut { get; set; }
     public List<OrderItemDto> Items { get; set; }
+    private decimal _totalAmount;
+    public decimal TotalAmount
+    {
+        get
+        {
+            if (Items != null && Items.Count > 0)
+            {
+                _totalAmount = Items.Sum(item => item.Price * item.Quantity);
+            }
+            return _totalAmount;
+        }
+        set
+        {
+            _totalAmount = value;
+        }
+    }
 }
 public class OrderItemDto : IMapFrom<OrderLineItemEntity>
 {

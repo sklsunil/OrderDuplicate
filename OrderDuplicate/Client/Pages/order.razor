@@ -1,119 +1,376 @@
-﻿@page "/Counter/{Id:int}/order"  
-@using System.Net.Http.Json  
-@using OrderDuplicate.Application.Common.Models  
-@using OrderDuplicate.Application.Features.Order.DTOs  
-@using OrderDuplicate.Application.Features.Counter.DTOs  
-@using OrderDuplicate.Application.Model  
-@using OrderDuplicate.Application.Model.Counter  
-@using Microsoft.AspNetCore.Authorization  
-@using Microsoft.Extensions.Logging  
+﻿@page "/Counter/{Id:int}/order"
+@using System.Net.Http.Json
+@using OrderDuplicate.Application.Common.Models
+@using OrderDuplicate.Application.Features.Order.DTOs
+@using OrderDuplicate.Application.Features.Counter.DTOs
+@using OrderDuplicate.Application.Model
+@using OrderDuplicate.Application.Model.Counter
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Logging
+@using OrderDuplicate.Application.Model.Order
+@using OrderDuplicate.Application.Service
+@using Websocket.Client
 
-@attribute [Authorize]  
-@inject HttpClient Http  
-@inject ILogger<Counter> Logger  
 
-<h3>Order Details</h3>  
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ILogger<Counter> Logger
+@inject IJSRuntime JsRuntime
 
-@if (order == null)  
-{  
-   <p><em>Loading...</em></p>  
-}  
-else  
-{  
-   <div>  
-       <h4>Order Number: @order.OrderNumber</h4>  
-       <h5>Items:</h5>  
-       <table class="table">  
-           <thead>  
-               <tr>  
-                   <th>Name</th>  
-                   <th>Quantity</th>  
-                   <th>Price</th>  
-                   <th>Total</th>  
-               </tr>  
-           </thead>  
-           <tbody>  
-               @foreach (var item in order.Items)  
-               {  
-                   <tr>  
-                       <td>@item.Name</td>  
-                       <td>@item.Quantity</td>  
-                       <td>@item.Price</td>  
-                       <td>@(item.Quantity * item.Price)</td>  
-                   </tr>  
-               }  
-           </tbody>  
-       </table>  
-       <button class="btn btn-primary" @onclick="ShowAddItemModal">Add Item</button>  
-       <button class="btn btn-primary" @onclick="Checkout">Checkout</button>  
-   </div>  
-}  
 
-<EditForm Model="newItem" OnValidSubmit="AddItemToOrder">  
-   <DataAnnotationsValidator />  
-   <ValidationSummary />  
-   <div class="form-group">  
-       <label for="name">Name</label>  
-       <InputText id="name" class="form-control" @bind-Value="newItem.Name" />  
-   </div>  
-   <div class="form-group">  
-       <label for="quantity">Quantity</label>  
-       <InputNumber id="quantity" class="form-control" @bind-Value="newItem.Quantity" />  
-   </div>  
-   <div class="form-group">  
-       <label for="price">Price</label>  
-       <InputNumber id="price" class="form-control" @bind-Value="newItem.Price" />  
-   </div>  
-   <button type="submit" class="btn btn-primary">Add to Cart</button>  
-</EditForm>  
+<style>
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+    }
 
-@code {  
-   [Parameter]  
-   public int Id { get; set; }  
+    .modal {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
 
-   private OrderDto order;  
-   private OrderLineItemDto newItem = new OrderLineItemDto();  
+    .table td {
+        vertical-align: middle;
+    }
 
-   protected override async Task OnInitializedAsync()  
-   {  
-       try  
-       {  
-           order = await Http.GetFromJsonAsync<OrderDto>($"api/orders/{Id}");  
-       }  
-       catch (Exception ex)  
-       {  
-           Logger.LogError(ex, "Error loading order");  
-       }  
-   }  
+    .text-end {
+        text-align: right;
+    }
 
-   private void ShowAddItemModal()  
-   {  
-       // Logic to show modal  
-   }  
+    .table-info {
+        background-color: #f8f9fa;
+    }
 
-   private async Task AddItemToOrder()  
-   {  
-       order.Items.Add(newItem);  
-       newItem = new OrderLineItemDto();  
-   }  
+    .font-weight-bold {
+        font-weight: bold;
+    }
+</style>
 
-   private async Task Checkout()  
-   {  
-       try  
-       {  
-           var response = await Http.PostAsJsonAsync($"api/orders/{Id}/checkout", order);  
-           if (response.IsSuccessStatusCode)  
-           {  
-               // Handle successful checkout  
-           }  
-           else  
-           {  
-               // Handle error  
-           }  
-       }  
-       catch (Exception ex)  
-       {  
-           Logger.LogError(ex, "Error during checkout");  
-       }  
-   }  
+<h3>Order Details: @model.OrderNumber</h3>
+@if (isCustomerShow)
+{
+    <button class="btn btn-info float-end" @onclick="OpenCustomerScreen">Customer Screen</button>
+}
+
+@if (model == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div>
+        <h5>Items:</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in model.Items)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.Price.ToString("C")</td>
+                        <td>@(item.Quantity * item.Price)</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" @onclick="() => EditItem(item)">Edit </button>
+                            <button class="btn btn-danger btn-sm" @onclick="() => RemoveItem(item)">Remove </button>
+                        </td>
+                    </tr>
+                }
+                <tr class="table-info font-weight-bold">
+                    <td colspan="3" class="text-end" style="padding-right:70px;"><strong>Grand Total:</strong></td>
+                    <td><strong>@CalculateGrandTotal().ToString("C")</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="row mt-3">
+            <div class="col">
+                <button class="btn btn-primary" disabled="@isDisabled" @onclick="() => showAddForm = true">Add Item</button>
+                @if (model.Items != null && model.Items.Any())
+                {
+                    @*                     <button class="btn btn-success" style="margin-left:5px;" @onclick="SaveOrder">Save Order</button>
+            <button class="btn btn-warning float-end" @onclick="Checkout">Checkout</button> *@
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (showAddForm || editingItem != null)
+{
+    <div class="modal" tabindex="-1" style="display:block">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingItem == null ? "Add New Item" : "Edit Item")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="newItem" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="form-group mb-3">
+                            <label for="name">Name</label>
+                            <InputText id="name" class="form-control" @bind-Value="newItem.Name" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="quantity">Quantity</label>
+                            <InputNumber id="quantity" class="form-control" @bind-Value="newItem.Quantity" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="price">Price</label>
+                            <InputNumber id="price" class="form-control" @bind-Value="newItem.Price" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary"> @(editingItem == null ? "Add Item" : "Update Item")</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private OrderDto model;
+    private OrderItemDto newItem = new OrderItemDto();
+    private bool showAddForm;
+    private bool isDisabled = true;
+    private OrderItemDto editingItem;
+    private bool isCustomerShow = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Create new order if it doesn't exist
+            if (model == null)
+            {
+                model = new OrderDto
+                    {
+                        CounterPersonId = Id.ToString(),
+                        Items = new List<OrderItemDto>(),
+                        IsCheckOut = true
+                    };
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing order");
+        }
+    }
+
+
+    private async Task AddItemToOrder()
+    {
+        if (model.Items == null)
+            model.Items = new List<OrderItemDto>();
+
+        model.Items.Add(newItem);
+        newItem = new OrderItemDto();
+        showAddForm = false;
+        StateHasChanged();
+    }
+
+    private async void RemoveItem(OrderItemDto item)
+    {
+        model.Items.Remove(item);
+
+        await SendMessage();
+
+        StateHasChanged();
+    }
+
+    private void EditItem(OrderItemDto item)
+    {
+        editingItem = item;
+        newItem = new OrderItemDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Quantity = item.Quantity,
+                Price = item.Price
+            };
+        showAddForm = true;
+    }
+
+    private void CloseModal()
+    {
+        showAddForm = false;
+        editingItem = null;
+        newItem = new OrderItemDto();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (editingItem != null)
+        {
+            var index = model.Items.IndexOf(editingItem);
+            if (index != -1)
+            {
+                model.Items[index] = newItem;
+            }
+        }
+        else
+        {
+            model.Items.Add(newItem);
+        }
+
+        await SendMessage();
+
+        CloseModal();
+        StateHasChanged();
+    }
+
+    private async Task Checkout()
+    {
+        try
+        {
+            if (model.Items == null || !model.Items.Any())
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Cannot checkout empty order!");
+                return;
+            }
+
+            var response = await Http.PostAsJsonAsync($"Order/{model.Id}/checkout", model);
+            if (response.IsSuccessStatusCode)
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Checkout successful!");
+                // Navigate back to counter list or clear the order
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Error during checkout!");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during checkout");
+            await JsRuntime.InvokeVoidAsync("alert", "Error during checkout!");
+        }
+    }
+
+
+    private async Task SaveOrder()
+    {
+        try
+        {
+            var orderModel = new OrderModel
+                {
+                    OrderNumber = model.OrderNumber,
+                    CounterPersonId = model.CounterPersonId,
+                    OrderItems = model.Items.Select(x => new OrderItemModel
+                    {
+                        Name = x.Name,
+                        Quantity = x.Quantity,
+                        Price = x.Price
+                    }).ToList()
+                };
+
+            var response = await Http.PostAsJsonAsync("Order", orderModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Reset the form after successful save
+                model = new OrderDto
+                    {
+                        CounterPersonId = Id.ToString(),
+                        Items = new List<OrderItemDto>(),
+                        IsCheckOut = true
+                    };
+
+                await JsRuntime.InvokeVoidAsync("alert", "Order saved successfully!");
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Error saving order!");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving order");
+        }
+    }
+
+    private decimal CalculateGrandTotal()
+    {
+        if (model?.Items == null) return 0;
+        return model.Items.Sum(item => item.Quantity * item.Price);
+    }
+
+    private async Task OpenCustomerScreen()
+    {
+        isDisabled = false;
+        isCustomerShow = false;
+        model.OrderNumber = CreateOrderNumber();
+        var url = $"{Navigation.BaseUri}Counter/{Id}/customer";
+
+        await JsRuntime.InvokeVoidAsync("openNewWindow", url);
+    }
+
+    private string CreateOrderNumber()
+    {
+        var random = new Random();
+        var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        var digits = "0123456789";
+        var orderNumber = new char[10];
+
+        for (int i = 0; i < 5; i++)
+        {
+            orderNumber[i] = letters[random.Next(letters.Length)];
+        }
+
+        for (int i = 5; i < 10; i++)
+        {
+            orderNumber[i] = digits[random.Next(digits.Length)];
+        }
+
+        return "ODR-" + new string(orderNumber);
+    }
+
+    public async Task SendMessage()
+    {
+        if (model == null)
+        {
+            model = new();
+        }
+
+        try
+        {
+            if (model.Items == null || model.Items?.Count == 0)
+            {
+                model.TotalAmount = 0;
+            }
+            var response = await Http.PostAsJsonAsync($"WebPubSub/EventHandler?counterId={Id}", model);
+            if (response.IsSuccessStatusCode)
+            {
+                Logger.LogInformation("Message sent successfully.");
+            }
+            else
+            {
+                Logger.LogError("Failed to send message. Status code: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error sending message.");
+        }
+    }
+
 }

@@ -21,7 +21,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OrderDuplicate.Application.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "function", "function", "{DAA8A0DF-4C84-4077-A287-72CDE9E60CB7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderItemProcessing", "functions\OrderItemProcessing\OrderItemProcessing.csproj", "{65CF009F-5C09-4107-97AA-B93F5B44B1E0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OrderItemProcessing", "functions\OrderItemProcessing\OrderItemProcessing.csproj", "{65CF009F-5C09-4107-97AA-B93F5B44B1E0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

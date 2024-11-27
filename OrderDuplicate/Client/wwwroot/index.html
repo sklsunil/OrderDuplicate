@@ -32,6 +32,12 @@
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="lib/bootstrap/js/bootstrap.min.js"></script>
+    <script>
+        function openNewWindow(url) {
+            const width = window.screen.availWidth;
+            const height = window.screen.availHeight;
+            window.open(url, '_blank', `toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=${width},height=${height},top=0,left=0`);
+        }
+    </script>
 </body>
-
 </html>
