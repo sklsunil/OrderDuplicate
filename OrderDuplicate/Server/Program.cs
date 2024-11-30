@@ -13,6 +13,16 @@ builder.Services.AddInfrastructureServices(builder.Configuration)
 
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -48,6 +58,8 @@ app.UseRouting();
 
 
 app.MapRazorPages();
+
+app.UseCors("AllowAllOrigins");
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
