@@ -119,13 +119,44 @@ else
     </div>
 }
 
+
+@if (showAddForm || editingItem != null)
+{
+    <div class="modal" tabindex="-1" style="display:block">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Items</h5>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="editingItem" OnValidSubmit="HandleSubmit">
+                        <div class="form-group mb-3">
+                            <label for="name">Name</label>
+                            <InputText id="name" class="form-control" @bind-Value="editingItem.Name" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="quantity">Quantity</label>
+                            <InputNumber id="quantity" class="form-control" @bind-Value="editingItem.Quantity" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="price">Price</label>
+                            <InputNumber id="price" class="form-control" @bind-Value="editingItem.Price" />
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
 
     [Parameter]
     public int CounterSessionId { get; set; }
 
     private OrderDto? order;
-
+    private bool showAddForm;
+    private OrderItemDto? editingItem;
     private string? webSoketUrl;
     private WebsocketClient? websocketClient;
     private string globalMessage = string.Empty;
@@ -150,7 +181,30 @@ else
                     else
                     {
                         globalMessage = string.Empty;
-                        order = JsonSerializer.Deserialize<OrderDto>(message);
+                        var result = JsonSerializer.Deserialize<OrderDto>(message);
+                        if (order == null)
+                        {
+                            order = new();
+                        }
+                        if (order.Items == null)
+                        {
+                            order.Items = new();
+                        }
+                        if (result != null && !result.IsTempOrder)
+                        {
+                            order.OrderNumber = result.OrderNumber;
+                            order.CounterPersonId = result.CounterPersonId;
+                            order.Items = result?.Items;
+                            editingItem = new();                           
+                            showAddForm = false;
+                            editingItem = null;
+                        }
+                        else
+                        {
+                            showAddForm = true;
+                            editingItem = null;
+                            editingItem = result?.Items?.FirstOrDefault();
+                        }
                     }
                 }
                 StateHasChanged();
@@ -176,5 +230,9 @@ else
             await websocketClient.Stop(WebSocketCloseStatus.NormalClosure, "Closing connection");
 
         }
+    }
+    public void HandleSubmit()
+    {
+
     }
 }

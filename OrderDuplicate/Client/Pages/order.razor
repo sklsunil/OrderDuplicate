@@ -120,15 +120,15 @@ else
 
                         <div class="form-group mb-3">
                             <label for="name">Name</label>
-                            <InputText id="name" class="form-control" @bind-Value="newItem.Name" />
+                            <InputText id="name" class="form-control" @bind-Value="newItem.Name" @oninput="HandleOnInputName" />
                         </div>
                         <div class="form-group mb-3">
                             <label for="quantity">Quantity</label>
-                            <InputNumber id="quantity" class="form-control" @bind-Value="newItem.Quantity" />
+                            <InputNumber id="quantity" class="form-control" @bind-Value="newItem.Quantity" @oninput="HandleOnInputQuantity" />
                         </div>
                         <div class="form-group mb-3">
                             <label for="price">Price</label>
-                            <InputNumber id="price" class="form-control" @bind-Value="newItem.Price" />
+                            <InputNumber id="price" class="form-control" @bind-Value="newItem.Price" @oninput="HandleOnInputPrice" />
                         </div>
 
                         <button type="submit" class="btn btn-primary"> @(editingItem == null ? "Add Item" : "Update Item")</button>
@@ -153,6 +153,7 @@ else
     private bool isDisabled = true;
     private OrderItemDto editingItem;
     private bool isCustomerShow = true;
+    private OrderDto tempModel;
 
     protected override async Task OnInitializedAsync()
     {
@@ -167,12 +168,74 @@ else
                         Items = new List<OrderItemDto>(),
                         IsCheckOut = true
                     };
+                tempModel = new();
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing order");
         }
+    }
+
+    private async Task HandleOnInputQuantity(ChangeEventArgs e)
+    {
+        tempModel.IsTempOrder = true;
+        var inputValue = e.Value?.ToString() ?? "";
+        if (int.TryParse(inputValue, out int quantity))
+        {
+            if (tempModel.Items == null || !tempModel.Items.Any())
+            {
+                tempModel.Items = new();
+                var item = new OrderItemDto
+                    {
+                        Quantity = quantity
+                    };
+                tempModel.Items.Add(item);
+            }
+            else
+                tempModel.Items.ForEach(x => { x.Quantity = quantity; });
+            await SendTempMessage();
+        }
+    }
+
+    private async Task HandleOnInputPrice(ChangeEventArgs e)
+    {
+        tempModel.IsTempOrder = true;
+        var inputValue = e.Value?.ToString() ?? "";
+        if (decimal.TryParse(inputValue, out decimal price))
+        {
+            if (tempModel.Items == null || !tempModel.Items.Any())
+            {
+                tempModel.Items = new();
+                var item = new OrderItemDto
+                    {
+                        Price = price
+                    };
+                tempModel.Items.Add(item);
+            }
+            else
+                tempModel.Items.ForEach(x => { x.Price = price; });
+            await SendTempMessage();
+        }
+    }
+
+    private async Task HandleOnInputName(ChangeEventArgs e)
+    {
+        tempModel.IsTempOrder = true;
+        var inputValue = e.Value?.ToString() ?? "";
+        if (tempModel.Items == null || !tempModel.Items.Any())
+        {
+            tempModel.Items = new();
+            var item = new OrderItemDto
+                {
+                    Name = inputValue
+                };
+            tempModel.Items.Add(item);
+        }
+        else
+            tempModel.Items.ForEach(x => { x.Name = inputValue; });
+        await SendTempMessage();
+
     }
 
 
@@ -190,7 +253,8 @@ else
     private async void RemoveItem(OrderItemDto item)
     {
         model.Items.Remove(item);
-
+        tempModel.Items = new();
+        tempModel.IsTempOrder = true;
         await SendMessage();
 
         StateHasChanged();
@@ -207,6 +271,7 @@ else
                 Price = item.Price
             };
         showAddForm = true;
+        tempModel.Items = new();
     }
 
     private void CloseModal()
@@ -214,6 +279,7 @@ else
         showAddForm = false;
         editingItem = null;
         newItem = new OrderItemDto();
+        tempModel.Items = new();
     }
 
     private async Task HandleSubmit()
@@ -232,6 +298,8 @@ else
         }
 
         await SendMessage();
+        tempModel.Items = new();
+        tempModel.IsTempOrder = true;
 
         CloseModal();
         StateHasChanged();
@@ -291,7 +359,8 @@ else
                 model = new OrderDto
                     {
                         CounterPersonId = Id.ToString(),
-                        Items = new List<OrderItemDto>(),
+                        Items = new List<OrderItemDto>
+                                                        (),
                         IsCheckOut = true
                     };
 
@@ -319,9 +388,11 @@ else
         isDisabled = false;
         isCustomerShow = false;
         model.OrderNumber = CreateOrderNumber();
-        var url = $"{Navigation.BaseUri}Counter/{Id}/customer";
 
+        var url = $"{Navigation.BaseUri}Counter/{Id}/customer";
         await JsRuntime.InvokeVoidAsync("openNewWindow", url);
+        await Task.Delay(1000);
+        await SendMessage();
     }
 
     private string CreateOrderNumber()
@@ -344,20 +415,26 @@ else
         return "ODR-" + new string(orderNumber);
     }
 
-    public async Task SendMessage()
+    public async Task SendTempMessage()
     {
-        if (model == null)
+        if (tempModel == null)
         {
-            model = new();
+            tempModel = new();
         }
 
         try
         {
-            if (model.Items == null || model.Items?.Count == 0)
+            if (tempModel.Items == null || tempModel.Items?.Count == 0)
             {
-                model.TotalAmount = 0;
+                tempModel.TotalAmount = 0;
             }
-            var response = await Http.PostAsJsonAsync($"WebPubSub/EventHandler?counterId={Id}", model);
+            else
+            {
+                tempModel.TotalAmount = tempModel.Items.Sum(item => item.Quantity * item.Price);
+            }
+            tempModel.OrderNumber = model.OrderNumber;
+            tempModel.CounterPersonId = model.CounterPersonId;
+            var response = await Http.PostAsJsonAsync($"WebPubSub/EventHandler?counterId={Id}", tempModel);
             if (response.IsSuccessStatusCode)
             {
                 Logger.LogInformation("Message sent successfully.");
@@ -373,4 +450,33 @@ else
         }
     }
 
+    public async Task SendMessage()
+    {
+        if (model == null)
+        {
+            model = new();
+        }
+
+        try
+        {
+            if (model.Items == null || model.Items?.Count == 0)
+            {
+                model.TotalAmount = 0;
+            }
+            model.IsTempOrder = false;
+            var response = await Http.PostAsJsonAsync($"WebPubSub/EventHandler?counterId={Id}", model);
+            if (response.IsSuccessStatusCode)
+            {
+                Logger.LogInformation("Message sent successfully.");
+            }
+            else
+            {
+                Logger.LogError("Failed to send message. Status code: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error sending message.");
+        }
+    }
 }
