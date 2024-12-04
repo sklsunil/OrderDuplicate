@@ -1,21 +1,23 @@
 ﻿using AutoMapper;
+
 using MediatR;
-using OrderDuplicate.Application.Common.Exceptions;
-using OrderDuplicate.Application.Common.Interfaces.Caching;
-using OrderDuplicate.Application.Common.Interfaces;
-using OrderDuplicate.Application.Features.Group.Dto;
-using OrderDuplicate.Application.Common;
-using OrderDuplicate.Application.Features.Group.Caching;
+
 using Microsoft.EntityFrameworkCore;
+
+using OrderDuplicate.Application.Common;
+using OrderDuplicate.Application.Common.Interfaces;
+using OrderDuplicate.Application.Common.Interfaces.Caching;
+using OrderDuplicate.Application.Features.Group.Caching;
+using OrderDuplicate.Application.Features.Group.Dto;
 
 namespace OrderDuplicate.Application.Features.Group.Queries.GetAll;
 
 public class GetGroupByCounterQuery() : ICacheInvalidatorRequest<Result<List<GroupDto>>>
 {
-    public int Id { get; set; } 
+    public int Id { get; set; }
     public string CacheKey => GroupCacheKey.GetAllCacheKey;
     public CancellationTokenSource? SharedExpiryTokenSource => GroupCacheKey.SharedExpiryTokenSource();
-   
+
 }
 
 public class GetGroupByCounterCommandHandler(
@@ -30,13 +32,10 @@ IApplicationDbContext context,
 
     public async Task<Result<List<GroupDto>>> Handle(GetGroupByCounterQuery request, CancellationToken cancellationToken)
     {
-        var counter = await _context
-                                .Counters
-                                .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken) ?? throw new NotFoundException($"Counters id: '{request.Id}' not found");
-
         var items = await _context
-                            .Groups
-                            .Where(x => request.Id == counter.PersonId).ToListAsync(cancellationToken);
+                            .Groups.Include(x => x.GroupCounters).ThenInclude(x => x.Counter)
+                            .Where(x => x.GroupCounters.Any(g => g.CounterId == request.Id))
+                            .ToListAsync(cancellationToken);
 
         return await Result<List<GroupDto>>.SuccessAsync(_mapper.Map<List<GroupDto>>(items));
     }

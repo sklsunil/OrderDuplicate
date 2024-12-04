@@ -10,14 +10,14 @@ namespace OrderDuplicate.Application.Features.Group.Dto
     {
         public void Mapping(Profile profile)
         {
-            profile.CreateMap<GroupEntity, GroupDto>();
+            profile.CreateMap<GroupEntity, GroupDto>()
+                   .ForMember(dest => dest.Counters, opt => opt.MapFrom(src => src.GroupCounters.Select(gc => gc.Counter)));
             profile.CreateMap<GroupDto, GroupEntity>();
         }
 
         [Description("Id")]
         public int Id { get; set; }
-        public int CounterId { get; set; }
         public string GroupName { get; set; }
-        public CounterDto Counter{ get; set; }
+        public List<CounterDto> Counters { get; set; } = new List<CounterDto>();
     }
 }

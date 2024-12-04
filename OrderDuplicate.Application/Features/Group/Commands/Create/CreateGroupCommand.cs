@@ -14,9 +14,7 @@ namespace OrderDuplicate.Application.Features.Group.Commands.Create;
 
 public class CreateGroupCommand : IMapFrom<GroupDto>, ICacheInvalidatorRequest<Result<int>>
 {
-    public int CounterId { get; set; }
     public string GroupName { get; set; }
-    public CounterDto Counter { get; set; }
     public string CacheKey => GroupCacheKey.GetAllCacheKey;
     public CancellationTokenSource? SharedExpiryTokenSource => GroupCacheKey.SharedExpiryTokenSource();
 }

@@ -11,8 +11,7 @@ namespace OrderDuplicate.Domain.Entities
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
-        public int CounterId { get; set; }
         public string GroupName { get; set; }
-        public CounterEntity CounterEntity { get; set; }
+        public ICollection<GroupCounterEntity> GroupCounters { get; set; } = new List<GroupCounterEntity>();
     }
 }

@@ -1,4 +1,4 @@
-﻿@page "/Group"
+﻿@* @page "/Group"
 @using System.Net.Http.Json
 @using OrderDuplicate.Application.Model.Group
 @using OrderDuplicate.Application.Features.Group.Dto
@@ -48,7 +48,7 @@
             {
                 <tr>
                     <td>@group.GroupName</td>
-                    <td>@group.CounterId</td>
+                    
                     <td>
                         <button class="btn btn-danger btn-sm" @onclick="() => DeleteGroup(group.Id)">Delete</button>
                     </td>
@@ -138,4 +138,4 @@ else
             Logger.LogError(ex, "Error deleting group");
         }
     }
-}
+} *@

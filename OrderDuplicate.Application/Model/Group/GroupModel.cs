@@ -5,8 +5,6 @@ namespace OrderDuplicate.Application.Model.Group
 {
     public class GroupModel
     {
-        [Description("CounterId")]
-        public int CounterId { get; set; }
         [Description("GroupName")]
         public string GroupName { get; set; }
         public CounterEntity CounterEntity { get; set; }

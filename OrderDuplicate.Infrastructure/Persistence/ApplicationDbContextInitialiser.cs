@@ -1,5 +1,7 @@
 ﻿using OrderDuplicate.Domain.Entities;
 
+using System.Runtime.InteropServices;
+
 namespace OrderDuplicate.Infrastructure.Persistence
 {
 
@@ -33,6 +35,7 @@ namespace OrderDuplicate.Infrastructure.Persistence
             try
             {
                 await TrySeedAsync();
+                await CreateGroup();
                 _context.ChangeTracker.Clear();
             }
             catch (Exception ex)
@@ -60,6 +63,46 @@ namespace OrderDuplicate.Infrastructure.Persistence
                 if (dbValue == null)
                 {
                     await _context.Counters.AddAsync(Counter);
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+        public async Task CreateGroup()
+        {
+            List<GroupEntity> groupEntities = new List<GroupEntity>
+            {
+                new GroupEntity { GroupName = "Group 1" },
+                new GroupEntity { GroupName = "Group 2" },
+                new GroupEntity { GroupName = "Group 3" },
+                new GroupEntity { GroupName = "Group 4" },
+            };
+
+            foreach (var group in groupEntities)
+            {
+                var dbValue = await _context.Groups.FirstOrDefaultAsync(x => x.GroupName == group.GroupName);
+                if (dbValue == null)
+                {
+                    await _context.Groups.AddAsync(group);
+                    await _context.SaveChangesAsync();
+
+                    List<int> counterIds = group.GroupName switch
+                    {
+                        "Group 1" => new List<int> { 1, 2 },
+                        "Group 2" => new List<int> { 2, 3 },
+                        "Group 3" => new List<int> { 1, 2, 3 },
+                        "Group 4" => new List<int> { 4 },
+                        _ => new List<int>()
+                    };
+
+                    foreach (var counterId in counterIds)
+                    {
+                        var groupCounter = new GroupCounterEntity
+                        {
+                            GroupId = group.Id,
+                            CounterId = counterId
+                        };
+                        await _context.GroupCounters.AddAsync(groupCounter);
+                    }
                     await _context.SaveChangesAsync();
                 }
             }

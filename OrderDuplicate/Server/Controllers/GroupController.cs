@@ -1,9 +1,13 @@
 ﻿using Azure.Messaging.WebPubSub;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Mvc;
+
 using OrderDuplicate.Application.Common.Models;
 using OrderDuplicate.Application.Features.Group.Commands.Create;
 using OrderDuplicate.Application.Features.Group.Commands.Delete;
+using OrderDuplicate.Application.Features.Group.Commands.GroupCounter;
 using OrderDuplicate.Application.Features.Group.Commands.Update;
 using OrderDuplicate.Application.Features.Group.Queries.GetAll;
 using OrderDuplicate.Application.Features.Group.Queries.GetById;
@@ -14,7 +18,7 @@ namespace OrderDuplicate.Server.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class GroupController(ILogger<GroupController> logger, WebPubSubServiceClient client,  IMediator mediator) : ControllerBase
+    public class GroupController(ILogger<GroupController> logger, WebPubSubServiceClient client, IMediator mediator) : ControllerBase
     {
         private readonly ILogger<GroupController> _logger = logger;
         public readonly IMediator _mediator = mediator;
@@ -40,6 +44,7 @@ namespace OrderDuplicate.Server.Controllers
             };
             return Ok(await _mediator.Send(query).ConfigureAwait(false));
         }
+
         // GetBy CounterId
         [HttpGet("[action]")]
         public async Task<IActionResult> GetByCounterId([FromQuery] int id)
@@ -64,7 +69,7 @@ namespace OrderDuplicate.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> PostAsync([FromBody] GroupModel model)
         {
-            var cmd = new CreateGroupCommand { GroupName = model.GroupName, CounterId = model.CounterId };
+            var cmd = new CreateGroupCommand { GroupName = model.GroupName };
             return Ok(await _mediator.Send(cmd).ConfigureAwait(false));
         }
 
@@ -82,9 +87,10 @@ namespace OrderDuplicate.Server.Controllers
             {
                 return BadRequest(await Result.FailureAsync(new List<string> { "Invalid Id" }));
             }
-            var cmd = new UpdateGroupCommand { Id = model.Id, CounterId = model.CounterId, GroupName = model.GroupName };
+            var cmd = new UpdateGroupCommand { Id = model.Id, GroupName = model.GroupName };
             return Ok(await _mediator.Send(cmd).ConfigureAwait(false));
         }
+
         // Remove group
         /// <summary>
         /// 
@@ -98,36 +104,36 @@ namespace OrderDuplicate.Server.Controllers
             return Ok(await _mediator.Send(cmd).ConfigureAwait(false));
         }
 
-        // Remove user from all groups
+
         [HttpPost("[action]")]
-        public async Task<IActionResult> RemoveUserFromAllGroups([FromQuery] string userId)
+        public async Task<IActionResult> RemoveCounterFromAllGroupsAsync([FromQuery] int counterId)
         {
-            // Remove user from the table 
-          //  await userService.RemoveUserAsync(userId);
-            await _client.RemoveUserFromAllGroupsAsync(userId);
-            return Ok("User removed from all groups.");
+            var command = new RemoveCounterFromAllGroupsCommand { CounterId = counterId };
+            var result = await _mediator.Send(command).ConfigureAwait(false);
+            await _client.RemoveUserFromAllGroupsAsync($"{counterId}");
+            return Ok(result);
+
         }
 
 
-        // join groups
-        // save counter id in respective group
-        // create client of web pubsub
-        //  _client.AddUserToGroupAsync("", "");       
+
         [HttpPost("[action]")]
-        public async Task<IActionResult> JoinGroup([FromQuery] string userId, [FromQuery] string groupId)
+        public async Task<IActionResult> JoinGroupAsync([FromQuery] int counterId, [FromQuery] int groupId)
         {
-            await _client.AddUserToGroupAsync(userId, groupId);
-            return Ok("User added to group.");
+            var command = new JoinGroupCommand { CounterId = counterId, GroupId = groupId };
+            var result = await _mediator.Send(command).ConfigureAwait(false);
+            await _client.AddUserToGroupAsync(group: "group " + groupId, userId: $"{counterId}");
+            return Ok(result);
         }
 
-        // leave group
-        // remove counter id from respective group
-        // _client.RemoveUserFromGroupAsync("", "");
+
         [HttpPost("[action]")]
-        public async Task<IActionResult> LeaveGroup([FromQuery] string userId, [FromQuery] string groupId)
+        public async Task<IActionResult> LeaveGroupAsync([FromQuery] int counterId, [FromQuery] int groupId)
         {
-            await _client.RemoveUserFromGroupAsync(userId, groupId);
-            return Ok("User removed from group.");
+            var command = new LeaveGroupCommand { CounterId = counterId, GroupId = groupId };
+            var result = await _mediator.Send(command).ConfigureAwait(false);
+            await _client.RemoveUserFromGroupAsync(group: "group " + groupId, userId: $"{counterId}");
+            return Ok(result);
         }
     }
 }

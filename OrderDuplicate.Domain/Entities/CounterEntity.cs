@@ -13,5 +13,6 @@ namespace OrderDuplicate.Domain.Entities
         public int Id { get; set; }
         public int PersonId { get; set; }
         public string CounterName { get; set; }
+        public ICollection<GroupCounterEntity> GroupCounters { get; set; } = new List<GroupCounterEntity>();
     }
 }

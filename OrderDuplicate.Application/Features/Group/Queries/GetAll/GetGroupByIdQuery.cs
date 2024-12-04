@@ -1,6 +1,9 @@
 ﻿using AutoMapper;
+
 using MediatR;
+
 using Microsoft.EntityFrameworkCore;
+
 using OrderDuplicate.Application.Common;
 using OrderDuplicate.Application.Common.Interfaces;
 using OrderDuplicate.Application.Common.Interfaces.Caching;
@@ -25,8 +28,10 @@ IMapper mapper
     private readonly IMapper _mapper = mapper;
     public async Task<Result<GroupDto>> Handle(GetGroupByIdQuery request, CancellationToken cancellationToken)
     {
-        var groupItems = await _context.Groups
-            .FirstOrDefaultAsync(oli => oli.Id == request.Id, cancellationToken);
+        var groupItems = await _context.Groups.
+                                        Include(x => x.GroupCounters)
+                                        .ThenInclude(x => x.Counter)
+                                .FirstOrDefaultAsync(oli => oli.Id == request.Id, cancellationToken);
 
         var groupDtos = _mapper.Map<GroupDto>(groupItems);
         return Result<GroupDto>.Success(groupDtos);

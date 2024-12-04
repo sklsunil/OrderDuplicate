@@ -10,6 +10,7 @@ using OrderDuplicate.Application.Features.Group.Caching;
 using System.Linq.Dynamic.Core;
 using AutoMapper.QueryableExtensions;
 using OrderDuplicate.Application.Common.Mappings;
+using OrderDuplicate.Application.Features.Counter.DTOs;
 
 namespace OrderDuplicate.Application.Features.Group.Queries.Pagination;
 
@@ -30,11 +31,37 @@ public class GroupWithPaginationQueryHandler(
 
     public async Task<PaginatedData<GroupDto>> Handle(GroupWithPaginationQuery request, CancellationToken cancellationToken)
     {
-        var data = await _context
-                            .Groups
-                            .OrderBy($"{request.OrderBy} {request.SortDirection}")
-                            .ProjectTo<GroupDto>(_mapper.ConfigurationProvider)
-                            .PaginatedDataAsync(request.PageNumber, request.PageSize);
-        return data;
+        var data = _context.Groups.AsQueryable();
+
+        var adS = request.AdvancedSearch;
+        if (adS != null)
+        {
+            foreach (var field in adS.Fields)
+            {
+                if (field.ToLower() == "id" && adS.Keyword != null)
+                {
+                    var isDigit = adS.Keyword.All(char.IsDigit);
+                    if (isDigit)
+                    {
+                        var id = int.Parse(adS.Keyword);
+                        data = data.Where(x => x.Id == id);
+                    }
+                }
+                else if (field.ToLower() == "groupname" && adS.Keyword != null)
+                {
+                    data = data.Where(x => x.GroupName.Contains(adS.Keyword));
+                }
+                else if (field.ToLower() == "countername" && adS.Keyword != null)
+                {
+                    data = data.Where(x => x.GroupCounters.Any(gc => gc.Counter.CounterName.Contains(adS.Keyword)));
+                }
+            }
+        }
+
+        var result = await data.OrderBy($"{request.OrderBy} {request.SortDirection}")
+               .ProjectTo<GroupDto>(_mapper.ConfigurationProvider)
+               .PaginatedDataAsync(request.PageNumber, request.PageSize);
+
+        return result;
     }
 }
