@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<CounterEntity> Counters { get; set; }
     public DbSet<OrderEntity> Orders { get; set; }
     public DbSet<OrderLineItemEntity> OrderItems { get; set; }
+    public DbSet<GroupEntity> Groups { get; set; }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

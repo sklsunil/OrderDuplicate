@@ -12,5 +12,6 @@ public interface IApplicationDbContext
     DbSet<CounterEntity> Counters { get; set; }
     DbSet<OrderEntity> Orders { get; set; }
     DbSet<OrderLineItemEntity> OrderItems { get; set; }
+    DbSet<GroupEntity> Groups { get; set; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

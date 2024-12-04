@@ -1,16 +1,12 @@
 ﻿using OrderDuplicate.Domain.Common;
 
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OrderDuplicate.Domain.Entities
 {
-    internal class GroupEntity : AuditableEntity
+    [Table("Groups")]
+    public class GroupEntity : AuditableEntity
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
