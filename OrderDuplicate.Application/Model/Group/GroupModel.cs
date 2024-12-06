@@ -1,5 +1,4 @@
-﻿using OrderDuplicate.Domain.Entities;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace OrderDuplicate.Application.Model.Group
 {
@@ -7,7 +6,6 @@ namespace OrderDuplicate.Application.Model.Group
     {
         [Description("GroupName")]
         public string GroupName { get; set; }
-        public CounterEntity CounterEntity { get; set; }
     }
     public class UpdateGroupModel : GroupModel
     {

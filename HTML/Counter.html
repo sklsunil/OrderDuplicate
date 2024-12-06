@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 2px;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 400px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            .modal-header h2 {
+                margin: 0;
+            }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+            .modal-footer .btn {
+                margin-left: 10px;
+            }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+            }
+
+            .form-group input {
+                width: 100%;
+                padding: 8px;
+                box-sizing: border-box;
+            }
+
+        .error-message {
+            color: red;
+            margin-bottom: 10px;
+        }
+
+        .success-message {
+            color: green;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Counter Management</h1>
+
+    <div class="controls">
+        <input id="searchInput" placeholder="Search by counter name" oninput="searchByCounterName()" />
+        <button class="btn btn-primary" onclick="openAddModal()">Add Counter</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Counter Name</th>
+                <th>Person ID</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Dynamic Content -->
+        </tbody>
+    </table>
+
+    <!-- Add/Edit Counter Modal -->
+    <div class="modal" id="counterModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Counter</h2>
+            </div>
+            <div id="message" class="error-message" style="display: none;"></div>
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+            <div class="form-group">
+                <label for="counterName">Counter Name:</label>
+                <input type="text" id="counterName" name="counterName" required>
+            </div>
+            <div class="form-group">
+                <label for="personId">Person ID:</label>
+                <input type="number" id="personId" name="personId" required>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="saveButton" onclick="saveCounter()">Save</button>
+                <button class="btn btn-success" id="updateButton" onclick="updateCounter()" style="display: none;">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let counters = [];
+        let isEditMode = false;
+        let editCounterId = null;
+        const API_BASE_URL = 'https://order-duplicate-poc.azurewebsites.net/';
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadCounters();
+        });
+
+        // Load counters from the server
+        async function loadCounters() {
+            try {
+                const response = await fetch(API_BASE_URL);
+                if (!response.ok) {
+                    throw new Error(`Error fetching counters: ${response.statusText}`);
+                }
+                const data = await response.json();
+                counters = data.items || [];
+                renderTable();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to load counters.");
+            }
+        }
+
+        // Render the counters table
+        function renderTable() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = ''; // Clear previous content
+
+            if (counters.length > 0) {
+                counters.forEach(counter => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                            <td>${counter.counterName}</td>
+                            <td>${counter.personId}</td>
+                            <td>
+                                <button class="btn btn-success" onclick="loginCounter(${counter.id})">Login</button>
+                                <button class="btn btn-primary" onclick="openEditModal(${counter.id})">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteCounter(${counter.id})">Delete</button>
+                            </td>
+                        `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3">No counters found.</td></tr>';
+            }
+        }
+
+        // Open the Add Counter Modal
+        function openAddModal() {
+            isEditMode = false;
+            editCounterId = null;
+            document.getElementById('modalTitle').innerText = "Add Counter";
+            document.getElementById('saveButton').style.display = "inline-block";
+            document.getElementById('updateButton').style.display = "none";
+            document.getElementById('counterName').value = "";
+            document.getElementById('personId').value = "";
+            hideMessages();
+            document.getElementById('counterModal').style.display = "block";
+        }
+
+        // Open the Edit Counter Modal
+        async function openEditModal(counterId) {
+            isEditMode = true;
+            editCounterId = counterId;
+            document.getElementById('modalTitle').innerText = "Edit Counter";
+            document.getElementById('saveButton').style.display = "none";
+            document.getElementById('updateButton').style.display = "inline-block";
+            hideMessages();
+
+            try {
+                // Fetch the specific counter by ID
+                const response = await fetch(`${API_BASE_URL}/Counter?PageNumber=1&PageSize=1&AdvancedSearch.Fields=Id&AdvancedSearch.Keyword=${counterId}&Keyword=${counterId}`);
+                if (!response.ok) {
+                    throw new Error(`Error fetching counter: ${response.statusText}`);
+                }
+                const data = await response.json();
+                const counter = data.items && data.items.length > 0 ? data.items[0] : null;
+
+                if (counter) {
+                    document.getElementById('counterName').value = counter.counterName;
+                    document.getElementById('personId').value = counter.personId;
+                    document.getElementById('counterModal').style.display = "block";
+                } else {
+                    alert("Counter not found.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Failed to fetch counter details.");
+            }
+        }
+
+        // Close the Modal
+        function closeModal() {
+            document.getElementById('counterModal').style.display = "none";
+        }
+
+        // Hide Messages
+        function hideMessages() {
+            const messageDiv = document.getElementById('message');
+            const successDiv = document.getElementById('successMessage');
+            messageDiv.style.display = "none";
+            successDiv.style.display = "none";
+        }
+
+        // Save a new counter
+        async function saveCounter() {
+            const counterName = document.getElementById('counterName').value.trim();
+            const personId = parseInt(document.getElementById('personId').value.trim());
+
+            if (!counterName || isNaN(personId)) {
+                showMessage("Please fill in all fields.", "error");
+                return;
+            }
+
+            try {
+                // Check if the counter name already exists
+                const existing = counters.find(c => c.counterName.toLowerCase() === counterName.toLowerCase());
+                if (existing) {
+                    showMessage("Counter name already exists.", "error");
+                    return;
+                }
+
+                const newCounter = {
+                    counterName: counterName,
+                    personId: personId
+                };
+
+                const response = await fetch(`${API_BASE_URL}/Counter`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newCounter)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error adding counter: ${response.statusText}`);
+                }
+
+                loadCounters();
+                showMessage("Counter added successfully.", "success");
+                setTimeout(() => { closeModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showMessage("Failed to add counter.", "error");
+            }
+        }
+
+        // Update an existing counter
+        async function updateCounter() {
+            const counterName = document.getElementById('counterName').value.trim();
+            const personId = parseInt(document.getElementById('personId').value.trim());
+
+            if (!counterName || isNaN(personId)) {
+                showMessage("Please fill in all fields.", "error");
+                return;
+            }
+
+            try {
+                // Check if the counter name already exists (excluding the current counter)
+                const existing = counters.find(c => c.counterName.toLowerCase() === counterName.toLowerCase() && c.id !== editCounterId);
+                if (existing) {
+                    showMessage("Counter name already exists.", "error");
+                    return;
+                }
+
+                const updatedCounter = {
+                    id: editCounterId,
+                    counterName: counterName,
+                    personId: personId
+                };
+
+                const response = await fetch(`${API_BASE_URL}/Counter/${editCounterId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedCounter)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error updating counter: ${response.statusText}`);
+                }
+
+                // Update the counter in the local array
+                const index = counters.findIndex(c => c.id === editCounterId);
+                if (index !== -1) {
+                    counters[index] = updatedCounter;
+                    renderTable();
+                }
+
+                showMessage("Counter updated successfully.", "success");
+                setTimeout(() => { closeModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showMessage("Failed to update counter.", "error");
+            }
+        }
+
+        // Delete a counter
+        async function deleteCounter(counterId) {
+            const confirmed = confirm("Are you sure you want to delete this counter?");
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/Counter/${counterId}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error deleting counter: ${response.statusText}`);
+                }
+
+                // Remove the counter from the local array
+                counters = counters.filter(c => c.id !== counterId);
+                renderTable();
+                alert("Counter deleted successfully.");
+            } catch (error) {
+                console.error(error);
+                alert("Failed to delete counter.");
+            }
+        }
+
+        // Login action (redirect to Order page)
+        function loginCounter(counterId) {
+            window.location.href = `Order.html?id=${counterId}`;
+        }
+
+        // Search counters by name
+        async function searchByCounterName() {
+            const searchValue = document.getElementById('searchInput').value.trim();
+            if (!searchValue) {
+                await loadCounters();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/Counter?PageNumber=1&PageSize=100&AdvancedSearch.Fields=CounterName&AdvancedSearch.Keyword=${encodeURIComponent(searchValue)}&Keyword=${encodeURIComponent(searchValue)}`);
+                if (!response.ok) {
+                    throw new Error(`Error searching counters: ${response.statusText}`);
+                }
+                const data = await response.json();
+                counters = data.items || [];
+                renderTable();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to search counters.");
+            }
+        }
+
+        // Show message in modal
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            const successDiv = document.getElementById('successMessage');
+            if (type === "error") {
+                messageDiv.innerText = message;
+                messageDiv.style.display = "block";
+                successDiv.style.display = "none";
+            } else if (type === "success") {
+                successDiv.innerText = message;
+                successDiv.style.display = "block";
+                messageDiv.style.display = "none";
+            }
+        }
+
+        // Close modal when clicking outside (disabled as per requirement)
+        window.onclick = function (event) {
+            const modal = document.getElementById('counterModal');
+            if (event.target === modal) {
+                // Do nothing to prevent closing
+            }
+        }
+
+        // Prevent closing modal with Esc key
+        window.addEventListener('keydown', function (event) {
+            if (event.key === "Escape") {
+                event.preventDefault();
+            }
+        });
+    </script>
+
+</body>
+</html>

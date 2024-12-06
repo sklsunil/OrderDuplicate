@@ -105,7 +105,7 @@ namespace OrderDuplicate.Server.Controllers
         }
 
 
-        [HttpPost("[action]")]
+        [HttpGet("[action]")]
         public async Task<IActionResult> RemoveCounterFromAllGroupsAsync([FromQuery] int counterId)
         {
             var command = new RemoveCounterFromAllGroupsCommand { CounterId = counterId };
@@ -117,22 +117,20 @@ namespace OrderDuplicate.Server.Controllers
 
 
 
-        [HttpPost("[action]")]
+        [HttpGet("[action]")]
         public async Task<IActionResult> JoinGroupAsync([FromQuery] int counterId, [FromQuery] int groupId)
         {
             var command = new JoinGroupCommand { CounterId = counterId, GroupId = groupId };
-            var result = await _mediator.Send(command).ConfigureAwait(false);
-            await _client.AddUserToGroupAsync(group: "group " + groupId, userId: $"{counterId}");
+            var result = await _mediator.Send(command).ConfigureAwait(false);           
             return Ok(result);
         }
 
 
-        [HttpPost("[action]")]
+        [HttpGet("[action]")]
         public async Task<IActionResult> LeaveGroupAsync([FromQuery] int counterId, [FromQuery] int groupId)
         {
             var command = new LeaveGroupCommand { CounterId = counterId, GroupId = groupId };
             var result = await _mediator.Send(command).ConfigureAwait(false);
-            await _client.RemoveUserFromGroupAsync(group: "group " + groupId, userId: $"{counterId}");
             return Ok(result);
         }
     }

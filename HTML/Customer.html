@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Screen</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .table td {
+            vertical-align: middle;
+        }
+
+        .text-end {
+            text-align: right;
+        }
+
+        .table-info {
+            background-color: #f8f9fa;
+        }
+
+        .font-weight-bold {
+            font-weight: bold;
+        }
+
+        .header {
+            text-align: center;
+            background-color: #f0f0f0;
+            padding: 10px;
+            font-size: 1.5rem;
+        }
+
+        .ad-container {
+            text-align: center;
+            padding: 10px;
+        }
+
+        .ad-image {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            padding: 20px;
+        }
+
+        .error-message {
+            color: red;
+            margin-bottom: 10px;
+        }
+
+        .success-message {
+            color: green;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        Customer Screen - Counter: <span id="counterId"></span>
+    </div>
+
+    <div class="container mt-4">
+        <h5>Items:</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="orderItems"></tbody>
+            <tfoot>
+                <tr class="table-info font-weight-bold">
+                    <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
+                    <td id="grandTotal">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Ad Section -->
+    <div class="row mt-4">
+        <div class="col-6 ad-container" id="adContainer1" style="display: none;">
+            <img src="" alt="Ad 1" class="ad-image" id="adImage1">
+        </div>
+        <div class="col-6 ad-container" id="adContainer2" style="display: none;">
+            <img src="" alt="Ad 2" class="ad-image" id="adImage2">
+        </div>
+    </div>
+
+    <!-- Add Item Modal on Customer Screen (Read-Only) -->
+    <div class="modal fade" id="customerAddItemModal" tabindex="-1" role="dialog" aria-labelledby="customerAddItemModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="customerAddItemForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="customerAddItemModalLabel">Add New Item</h5>
+                        <button type="button" class="close" onclick="$('#customerAddItemModal').modal('hide')">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <!-- Modal Body with Read-Only Form Inputs -->
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="customerItemName">Name</label>
+                            <input type="text" class="form-control" id="customerItemName" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="customerItemQuantity">Quantity</label>
+                            <input type="number" class="form-control" id="customerItemQuantity" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="customerItemPrice">Price</label>
+                            <input type="number" class="form-control" id="customerItemPrice" readonly>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and Dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Define the API base URL
+        const API_BASE_URL = 'https://order-duplicate-poc.azurewebsites.net/';
+
+        const params = new URLSearchParams(window.location.search);
+        const counterId = params.get("id");
+        const orderNumber = params.get("orderNumber");
+        document.getElementById("counterId").innerText = orderNumber || "N/A";
+
+        const orderItems = document.getElementById("orderItems");
+        const grandTotal = document.getElementById("grandTotal");
+
+        let customerModel = {
+            items: []
+        };
+
+        // Initialize WebSocket connection
+        async function connectWebSocket() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/WebPubSub/Negotiate?counterId=${counterId}`);
+                const websocketUrl = await response.text();
+                const websocket = new WebSocket(websocketUrl);
+
+                websocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    const content = JSON.parse(data.Content);
+
+                    if (data.EventType === 1 || data.EventType === 2) {
+                        if (data.EventType === 1) { // HTML Event
+                            const { action, item } = content;
+                            $('#customerAddItemModal').modal('hide');
+                            updateCustomerScreen(action, item);
+                        } else if (data.EventType === 2) { // Custom Event
+                            const { action } = content;
+                            if (action === "openAddItemModal") {
+                                document.getElementById('customerItemName').value = '';
+                                document.getElementById('customerItemQuantity').value = '';
+                                document.getElementById('customerItemPrice').value = '';
+                                $('#customerAddItemModal').modal('show');
+                            } else if (action === "updateField") {
+                                const { field, value } = content;
+                                updateModalField(field, value);
+                            }
+                            else if (action === "closeAddItemModal") {
+                                document.getElementById('customerItemName').value = '';
+                                document.getElementById('customerItemQuantity').value = '';
+                                document.getElementById('customerItemPrice').value = '';
+                                $('#customerAddItemModal').modal('hide');
+                            }
+                        }
+                        // Handle Ad Events
+                        else if (data.EventType === 4) { // Custom Event for Ads (assuming EventType 4 is Custom)
+                            const { adId, imageUrl, action } = content;
+                            if (action === "updateAd") {
+                                updateAdImage(adId, imageUrl);
+                            }
+                        }
+                    }
+                    // Handle other EventTypes if necessary
+                };
+
+                websocket.onopen = () => {
+                    console.log('WebSocket connection established on Customer Screen.');
+                };
+
+                websocket.onerror = (error) => {
+                    console.error('WebSocket error on Customer Screen:', error);
+                };
+
+                websocket.onclose = () => {
+                    console.log('WebSocket connection closed on Customer Screen.');
+                };
+            } catch (error) {
+                console.error('Error connecting to WebSocket on Customer Screen:', error);
+            }
+        }
+
+        function updateAdImage(adId, imageUrl) {
+            const containerId = adId === 1 ? 'adContainer1' : 'adContainer2';
+            const container = document.getElementById(containerId);
+            const imageElement = container.querySelector('img');
+
+            if (imageUrl) {
+                container.style.display = 'block'; // Show the ad container
+                imageElement.src = imageUrl;
+            } else {
+                container.style.display = 'none'; // Hide the ad container if no image URL
+            }
+        }
+
+        // Function to update Customer Screen based on action
+        function updateCustomerScreen(action, item) {
+            const itemRowId = `item-row-${item.name}-${counterId}`;
+            let row = document.getElementById(itemRowId);
+
+            if (action === "add") {
+                if (!row) {
+                    row = document.createElement("tr");
+                    row.id = itemRowId;
+                    row.innerHTML = `
+                                        <td>${item.name}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>${item.price.toFixed(2)}</td>
+                                        <td>${(item.quantity * item.price).toFixed(2)}</td>
+                                    `;
+                    orderItems.appendChild(row);
+                }
+            } else if (action === "remove") {
+                if (row) row.remove();
+            }
+
+            calculateGrandTotal();
+        }
+
+        // Function to calculate Grand Total
+        function calculateGrandTotal() {
+            let total = 0;
+            Array.from(orderItems.children).forEach(row => {
+                total += parseFloat(row.children[3].textContent);
+            });
+            grandTotal.innerText = total.toFixed(2);
+        }
+
+        // Function to update fields in the Customer Modal
+        function updateModalField(field, value) {
+            const fieldMap = {
+                'itemName': 'customerItemName',
+                'itemQuantity': 'customerItemQuantity',
+                'itemPrice': 'customerItemPrice'
+            };
+            const elementId = fieldMap[field];
+            if (elementId && document.getElementById(elementId)) {
+                document.getElementById(elementId).value = value;
+            }
+        }
+
+        // Initialize WebSocket connection on page load
+        connectWebSocket();
+    </script>
+</body>
+
+</html>

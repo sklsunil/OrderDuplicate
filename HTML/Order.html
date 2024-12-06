@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Details</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .table td {
+            vertical-align: middle;
+        }
+
+        .text-end {
+            text-align: right;
+        }
+
+        .table-info {
+            background-color: #f8f9fa;
+        }
+
+        .font-weight-bold {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <h3>Order Details: <span id="orderNumber">ODR-XXXXX</span></h3>
+        <button class="btn btn-info float-end" id="customerScreenButton">Customer Screen</button>
+        <h5>Items:</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="orderItems"></tbody>
+            <tfoot>
+                <tr class="table-info font-weight-bold">
+                    <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
+                    <td id="grandTotal">0.00</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        <button class="btn btn-primary" id="addItemButton">Add Item</button>
+    </div>
+
+    <!-- Add Item Modal on Order Screen -->
+    <div class="modal fade" id="addItemModal" tabindex="-1" role="dialog" aria-labelledby="addItemModalLabel" data-backdrop="static" data-keyboard="false" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="addItemForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addItemModalLabel">Add New Item</h5>
+                        <button type="button" class="close" name="clsCustom" data-dismiss="modal" aria-label="Close" id="closeOrderModal">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <!-- Modal Body with Form Inputs -->
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="itemName">Name</label>
+                            <input type="text" class="form-control" id="itemName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="itemQuantity">Quantity</label>
+                            <input type="number" class="form-control" id="itemQuantity" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="itemPrice">Price</label>
+                            <input type="number" class="form-control" id="itemPrice" min="0.01" step="0.01" required>
+                        </div>
+                    </div>
+                    <!-- Modal Footer with Action Buttons -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" name="clsCustom" data-dismiss="modal" id="cancelOrderModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="submitOrderModal">Add Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and Dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        var apiURL = "https://order-duplicate-poc.azurewebsites.net/";
+        let orderModel = {
+            orderNumber: "ODR-" + Math.random().toString(36).substr(2, 5).toUpperCase(),
+            items: []
+        };
+
+        document.getElementById("orderNumber").innerText = orderModel.orderNumber;
+        const customerScreenButton = document.getElementById("customerScreenButton");
+        const addItemButton = document.getElementById("addItemButton");
+        const orderItems = document.getElementById("orderItems");
+        const grandTotal = document.getElementById("grandTotal");
+
+        const params = new URLSearchParams(window.location.search);
+        const counterId = params.get("id") || Math.floor(Math.random() * 1000); // Generate if not present
+        const closeModel = document.getElementById("closeOrderModal");
+        const closeFooterModel = document.getElementById("cancelOrderModal");
+
+        // Open Customer Screen
+        customerScreenButton.addEventListener("click", () => {
+            const url = `customer.html?id=${counterId}&orderNumber=${orderModel.orderNumber}`;
+            window.open(url, '_blank');
+        });
+
+        // Function to send event to open Add Item Modal on Customer Screen
+        async function openAddItemModalOnCustomer() {
+            const event = {
+                eventType: 2, // Custom event type for opening modal
+                content: JSON.stringify({ action: "openAddItemModal" }),
+                identifier: `open-add-item-modal-${counterId}`
+            };
+
+            try {
+                const response = await fetch(`${apiURL}WebPubSub/SendEventHanlder?counterId=${counterId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(event)
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to send open modal event:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error sending open modal event:', error);
+            }
+        }
+
+        // Function to send event to close Add Item Modal on Customer Screen
+        async function closeAddItemModalOnCustomer() {
+            const event = {
+                eventType: 2, // Custom event type for opening modal
+                content: JSON.stringify({ action: "closeAddItemModal" }),
+                identifier: `open-add-item-modal-${counterId}`
+            };
+
+            try {
+                const response = await fetch(`${apiURL}WebPubSub/SendEventHanlder?counterId=${counterId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(event)
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to send open modal event:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error sending open modal event:', error);
+            }
+        }
+
+        // Update Add Item Button to open modal on Customer Screen
+        addItemButton.addEventListener("click", () => {
+            // Open modal on Order Screen
+            $('#addItemModal').modal('show');
+            // Send event to open modal on Customer Screen
+            openAddItemModalOnCustomer();
+        });
+
+        closeModel.addEventListener("click", () => {
+            // Open modal on Order Screen
+            $('#addItemModal').modal('hide');
+            // Send event to open modal on Customer Screen
+            closeAddItemModalOnCustomer();
+        });
+
+        closeFooterModel.addEventListener("click", () => {
+            // Open modal on Order Screen
+            $('#addItemModal').modal('hide');
+            // Send event to open modal on Customer Screen
+            closeAddItemModalOnCustomer();
+        });
+
+        // Handle Add Item Form Submission on Order Screen
+        document.getElementById("addItemForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("itemName").value.trim();
+            const quantity = parseInt(document.getElementById("itemQuantity").value, 10);
+            const price = parseFloat(document.getElementById("itemPrice").value);
+
+            if (name && quantity > 0 && price > 0) {
+                const item = { name, quantity, price };
+                orderModel.items.push(item);
+                updateOrderItems();
+                await sendOrderUpdateToAPI(item, "add");
+
+                // Reset and hide the modal
+                document.getElementById("addItemForm").reset();
+                $('#addItemModal').modal('hide');
+
+                // Optionally, send an event to close the Customer modal if needed
+            } else {
+                alert("Please enter valid item details.");
+            }
+        });
+
+        // Function to update Order Items
+        function updateOrderItems() {
+            orderItems.innerHTML = "";
+            let total = 0;
+
+            orderModel.items.forEach((item, index) => {
+                const itemTotal = item.quantity * item.price;
+                total += itemTotal;
+
+                const row = document.createElement("tr");
+                row.id = `item-row-${item.name}-${counterId}`;
+                row.innerHTML = `
+                            <td>${item.name}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.price.toFixed(2)}</td>
+                            <td>${itemTotal.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="removeItem(${index})">Remove</button>
+                            </td>
+                        `;
+                orderItems.appendChild(row);
+            });
+
+            grandTotal.innerText = total.toFixed(2);
+        }
+
+        // Remove Item
+        window.removeItem = async (index) => {
+            const removedItem = orderModel.items.splice(index, 1)[0];
+            updateOrderItems();
+            await sendOrderUpdateToAPI(removedItem, "remove");
+        };
+
+        // Send Order Update to API
+        async function sendOrderUpdateToAPI(item, action) {
+            const event = {
+                eventType: 1, // HTML
+                content: JSON.stringify({ action, item }),
+                identifier: `item-row-${item.name}-${counterId}`
+            };
+
+            try {
+                const response = await fetch(`${apiURL}WebPubSub/SendEventHanlder?counterId=${counterId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(event)
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to send event:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error sending event:', error);
+            }
+        }
+
+        // Function to synchronize fields with Customer Screen
+        function synchronizeCustomerModalFields(field, value) {
+            // Send event to Customer Screen to update the respective field
+            const event = {
+                eventType: 2, // Custom event type for field updates
+                content: JSON.stringify({ action: "updateField", field, value }),
+                identifier: `update-field-${field}-${counterId}`
+            };
+
+            fetch(`${apiURL}WebPubSub/SendEventHanlder?counterId=${counterId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(event)
+            }).catch(error => console.error('Error sending field update:', error));
+        }
+
+        // Event listeners to capture input changes and send updates
+        document.getElementById("itemName").addEventListener("input", (e) => {
+            synchronizeCustomerModalFields('itemName', e.target.value);
+        });
+
+        document.getElementById("itemQuantity").addEventListener("input", (e) => {
+            synchronizeCustomerModalFields('itemQuantity', e.target.value);
+        });
+
+        document.getElementById("itemPrice").addEventListener("input", (e) => {
+            synchronizeCustomerModalFields('itemPrice', e.target.value);
+        });
+
+    </script>
+</body>
+
+</html>

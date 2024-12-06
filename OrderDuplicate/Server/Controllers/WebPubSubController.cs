@@ -1,8 +1,11 @@
 ﻿using Azure.Core;
 using Azure.Messaging.WebPubSub;
 
+using MediatR;
+
 using Microsoft.AspNetCore.Mvc;
 
+using OrderDuplicate.Application.Features.Group.Queries.GetById;
 using OrderDuplicate.Application.Features.Order.DTOs;
 using OrderDuplicate.Domain.Models;
 
@@ -15,11 +18,12 @@ namespace OrderDuplicate.Server.Controllers
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    public class WebPubSubController(ILogger<OrderController> logger, WebPubSubServiceClient client, IConfiguration configuration) : ControllerBase
+    public class WebPubSubController(ILogger<OrderController> logger, WebPubSubServiceClient client, IConfiguration configuration, IMediator mediator) : ControllerBase
     {
         private readonly ILogger<OrderController> _logger = logger;
         private readonly WebPubSubServiceClient _client = client;
         private readonly IConfiguration _configuration = configuration;
+        public readonly IMediator _mediator = mediator;
 
         /// <summary>
         /// Negotiates the connection for a specific counter.
@@ -73,10 +77,10 @@ namespace OrderDuplicate.Server.Controllers
             var content = JsonSerializer.Serialize(@event);
             await _client.SendToUserAsync(counterId.ToString(), content, contentType: ContentType.ApplicationJson);
 
-            var functionUrl = _configuration["AzureFunctionUrl"];
+            var functionUrl = _configuration["SendEventProcessURL"];
             if (!string.IsNullOrEmpty(functionUrl))
             {
-                using var _httpClient = new HttpClient() { BaseAddress = new Uri(functionUrl) };
+                using var _httpClient = new HttpClient();
                 // Trigger the Azure Function via HTTP
                 var functionContent = new FunctionPubSubEvent
                 {
@@ -85,7 +89,7 @@ namespace OrderDuplicate.Server.Controllers
                     Identifier = @event.Identifier,
                     SesstionId = counterId
                 };
-                var response = await _httpClient.PostAsync("HttpTriggerFunction", new StringContent(JsonSerializer.Serialize(functionContent), System.Text.Encoding.UTF8, "application/json"));
+                var response = await _httpClient.PostAsync(functionUrl, new StringContent(JsonSerializer.Serialize(functionContent), System.Text.Encoding.UTF8, "application/json"));
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError($"Failed to trigger Azure Function. Status Code: {response.StatusCode}");
@@ -159,7 +163,24 @@ namespace OrderDuplicate.Server.Controllers
         [HttpPost("[action]")]
         public async Task<IActionResult> SendToGroupAsync([FromQuery] int groupId, [FromBody] PubSubEvent @event)
         {
-            await _client.SendToGroupAsync(group: "group " + groupId, content: JsonSerializer.Serialize(@event));
+            var query = new GetGroupByIdQuery { Id = groupId };
+            var group = await _mediator.Send(query).ConfigureAwait(false);
+            if (group?.Data == null)
+            {
+                return NotFound();
+            }
+            List<string> counters = group.Data.Counters.Select(x => x.Id.ToString()).ToList();
+            foreach (var user in counters)
+            {
+                if (await _client.UserExistsAsync(user))
+                {
+                    if (!await _client.GroupExistsAsync(user))
+                    {
+                        await _client.AddUserToGroupAsync(group: "group " + groupId, userId: $"{user}");
+                    }
+                    await _client.SendToGroupAsync(group: "group " + groupId, content: JsonSerializer.Serialize(@event));
+                }
+            }
             return Ok();
         }
     }

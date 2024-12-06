@@ -14,8 +14,10 @@ namespace OrderDuplicate.Domain.Models
     {
         HTML = 1,
         Text = 2,
-        Image = 3
+        Image = 3,
+        Custom = 4 // Added Custom event type
     }
+
     public enum ControlType
     {
         Input,

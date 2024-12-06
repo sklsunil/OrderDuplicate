@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 2px;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            .modal-header h2 {
+                margin: 0;
+            }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+            .modal-footer .btn {
+                margin-left: 10px;
+            }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+            }
+
+            .form-group input, .form-group select {
+                width: 100%;
+                padding: 8px;
+                box-sizing: border-box;
+            }
+
+        .error-message {
+            color: red;
+            margin-bottom: 10px;
+        }
+
+        .success-message {
+            color: green;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Group Management</h1>
+
+    <div class="controls">
+        <input id="searchInput" placeholder="Search by group name" oninput="searchByGroupName()" />
+        <button class="btn btn-primary" onclick="openAddGroupModal()">Add Group</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Group Name</th>
+                <th>Counters</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="groupTableBody">
+            <!-- Dynamic Content -->
+        </tbody>
+    </table>
+
+    <!-- Add/Edit Group Modal -->
+    <div class="modal" id="groupModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="groupModalTitle">Add Group</h2>
+                <span class="close" onclick="closeGroupModal()">&times;</span>
+            </div>
+            <div id="groupMessage" class="error-message" style="display: none;"></div>
+            <div id="groupSuccessMessage" class="success-message" style="display: none;"></div>
+            <div class="form-group">
+                <label for="groupName">Group Name:</label>
+                <input type="text" id="groupName" name="groupName" required>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeGroupModal()">Cancel</button>
+                <button class="btn btn-primary" id="groupSaveButton" onclick="saveGroup()">Save</button>
+                <button class="btn btn-success" id="groupUpdateButton" onclick="updateGroup()" style="display: none;">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join/Leave Counter Modal -->
+    <div class="modal" id="counterModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="counterModalTitle">Join Group</h2>
+                <span class="close" onclick="closeCounterModal()">&times;</span>
+            </div>
+            <div id="counterMessage" class="error-message" style="display: none;"></div>
+            <div id="counterSuccessMessage" class="success-message" style="display: none;"></div>
+            <div class="form-group">
+                <label for="counterSelect">Select Counter:</label>
+                <select id="counterSelect">
+                    <!-- Dynamic Options -->
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCounterModal()">Cancel</button>
+                <button class="btn btn-primary" id="counterSaveButton" onclick="joinGroup()">Join</button>
+                <button class="btn btn-success" id="counterLeaveButton" onclick="leaveGroup()" style="display: none;">Leave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Alert Modal -->
+    <div class="modal" id="sendAlertModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="sendAlertModalTitle">Send Alert to Group</h2>
+                <span class="close" onclick="closeSendAlertModal()">&times;</span>
+            </div>
+            <div id="sendAlertMessage" class="error-message" style="display: none;"></div>
+            <div id="sendAlertSuccessMessage" class="success-message" style="display: none;"></div>
+            <div class="form-group">
+                <label for="eventType">Event Type:</label>
+                <select id="eventType" required>
+                    <option value="">Select Event Type</option>
+                    <option value="HTML">HTML</option>
+                    <option value="Text">Text</option>
+                    <option value="Image">Image</option>
+                    <option value="Custom">Custom</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="eventContent">Content:</label>
+                <input type="text" id="eventContent" name="eventContent" required>
+            </div>
+            <div class="form-group">
+                <label for="identifier">Identifier:</label>
+                <input type="text" id="identifier" name="identifier" required>
+            </div>
+            <div class="form-group">
+                <label for="controlType">Control Type:</label>
+                <select id="controlType" required>
+                    <option value="Default">Default</option>
+                    <option value="Input">Input</option>
+                    <option value="TextArea">TextArea</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeSendAlertModal()">Cancel</button>
+                <button class="btn btn-primary" id="sendAlertSaveButton" onclick="sendAlert()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define the API base URL
+        const API_BASE_URL = 'https://order-duplicate-poc.azurewebsites.net/';
+
+        let groups = [];
+        let counters = [];
+        let isEditMode = false;
+        let editGroupId = null;
+        let currentActionGroupId = null;
+        let isJoinAction = true; // true for join, false for leave
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadGroups();
+            await loadCounters();
+        });
+
+        // Load groups from the server
+        async function loadGroups() {
+            try {
+                const response = await fetch(`${API_BASE_URL}Group`);
+                if (!response.ok) {
+                    throw new Error(`Error fetching groups: ${response.statusText}`);
+                }
+                const data = await response.json();
+                groups = data.items || [];
+                renderGroupTable();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to load groups.");
+            }
+        }
+
+        // Load counters from the server
+        async function loadCounters() {
+            try {
+                const response = await fetch(`${API_BASE_URL}Counter`);
+                if (!response.ok) {
+                    throw new Error(`Error fetching counters: ${response.statusText}`);
+                }
+                const data = await response.json();
+                counters = data.items || [];
+            } catch (error) {
+                console.error(error);
+                alert("Failed to load counters.");
+            }
+        }
+
+        // Render the groups table
+        function renderGroupTable() {
+            const tableBody = document.getElementById('groupTableBody');
+            tableBody.innerHTML = ''; // Clear previous content
+
+            if (groups.length > 0) {
+                groups.forEach(group => {
+                    const counterNames = group.counters.map(counter => counter.counterName).join(', ');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                                <td>${group.groupName}</td>
+                                <td>${counterNames}</td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="openEditGroupModal(${group.id})">Edit</button>
+                                    <button class="btn btn-danger" onclick="deleteGroup(${group.id})">Remove</button>
+                                    <button class="btn btn-success" onclick="openJoinCounterModal(${group.id})">Join Counter</button>
+                                    <button class="btn btn-secondary" onclick="openLeaveCounterModal(${group.id})">Leave Group</button>
+                                    <button class="btn btn-info" onclick="openSendAlertModal(${group.id})">Send Alert</button>
+                                </td>
+                            `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="5">No groups found.</td></tr>';
+            }
+        }
+
+        // Open the Add Group Modal
+        function openAddGroupModal() {
+            isEditMode = false;
+            editGroupId = null;
+            document.getElementById('groupModalTitle').innerText = "Add Group";
+            document.getElementById('groupSaveButton').style.display = "inline-block";
+            document.getElementById('groupUpdateButton').style.display = "none";
+            document.getElementById('groupName').value = "";
+            hideGroupMessages();
+            document.getElementById('groupModal').style.display = "block";
+        }
+
+        // Open the Edit Group Modal
+        function openEditGroupModal(groupId) {
+            isEditMode = true;
+            editGroupId = groupId;
+            const group = groups.find(g => g.id === groupId);
+            if (!group) {
+                alert("Group not found.");
+                return;
+            }
+            document.getElementById('groupModalTitle').innerText = "Edit Group";
+            document.getElementById('groupSaveButton').style.display = "none";
+            document.getElementById('groupUpdateButton').style.display = "inline-block";
+            document.getElementById('groupName').value = group.groupName;
+            hideGroupMessages();
+            document.getElementById('groupModal').style.display = "block";
+        }
+
+        // Close the Group Modal
+        function closeGroupModal() {
+            document.getElementById('groupModal').style.display = "none";
+        }
+
+        // Save a new group
+        async function saveGroup() {
+            const groupName = document.getElementById('groupName').value.trim();
+
+            if (!groupName) {
+                showGroupMessage("Please enter a group name.", "error");
+                return;
+            }
+
+            try {
+                // Check if the group name already exists
+                const existing = groups.find(g => g.groupName.toLowerCase() === groupName.toLowerCase());
+                if (existing) {
+                    showGroupMessage("Group name already exists.", "error");
+                    return;
+                }
+
+                const newGroup = {
+                    groupName: groupName
+                };
+
+                const response = await fetch(`${API_BASE_URL}Group`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newGroup)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error adding group: ${response.statusText}`);
+                }
+
+                const addedGroup = await response.json();
+                groups.push(addedGroup);
+                renderGroupTable();
+                showGroupMessage("Group added successfully.", "success");
+                setTimeout(() => { closeGroupModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showGroupMessage("Failed to add group.", "error");
+            }
+        }
+
+        // Update an existing group
+        async function updateGroup() {
+            const groupName = document.getElementById('groupName').value.trim();
+
+            if (!groupName) {
+                showGroupMessage("Please enter a group name.", "error");
+                return;
+            }
+
+            try {
+                // Check if the group name already exists (excluding the current group)
+                const existing = groups.find(g => g.groupName.toLowerCase() === groupName.toLowerCase() && g.id !== editGroupId);
+                if (existing) {
+                    showGroupMessage("Group name already exists.", "error");
+                    return;
+                }
+
+                const updatedGroup = {
+                    id: editGroupId,
+                    groupName: groupName
+                };
+
+                const response = await fetch(`${API_BASE_URL}Group/${editGroupId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedGroup)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error updating group: ${response.statusText}`);
+                }
+
+                // Update the group in the local array
+                const index = groups.findIndex(g => g.id === editGroupId);
+                if (index !== -1) {
+                    groups[index].groupName = groupName;
+                    renderGroupTable();
+                }
+
+                showGroupMessage("Group updated successfully.", "success");
+                setTimeout(() => { closeGroupModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showGroupMessage("Failed to update group.", "error");
+            }
+        }
+
+        // Delete a group
+        async function deleteGroup(groupId) {
+            const confirmed = confirm("Are you sure you want to delete this group?");
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}Group/${groupId}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error deleting group: ${response.statusText}`);
+                }
+
+                // Remove the group from the local array
+                groups = groups.filter(g => g.id !== groupId);
+                renderGroupTable();
+                alert("Group deleted successfully.");
+            } catch (error) {
+                console.error(error);
+                alert("Failed to delete group.");
+            }
+        }
+
+        // Open Join Counter Modal
+        function openJoinCounterModal(groupId) {
+            currentActionGroupId = groupId;
+            isJoinAction = true;
+            document.getElementById('counterModalTitle').innerText = "Join Group";
+            document.getElementById('counterSaveButton').style.display = "inline-block";
+            document.getElementById('counterLeaveButton').style.display = "none";
+            populateCounterDropdown();
+            hideCounterMessages();
+            document.getElementById('counterModal').style.display = "block";
+        }
+
+        // Open Leave Counter Modal
+        function openLeaveCounterModal(groupId) {
+            currentActionGroupId = groupId;
+            isJoinAction = false;
+            document.getElementById('counterModalTitle').innerText = "Leave Group";
+            document.getElementById('counterSaveButton').style.display = "none";
+            document.getElementById('counterLeaveButton').style.display = "inline-block";
+            populateCounterDropdown(groupId, false);
+            hideCounterMessages();
+            document.getElementById('counterModal').style.display = "block";
+        }
+
+        // Populate Counter Dropdown
+        function populateCounterDropdown(groupId = null, forJoin = true) {
+            const counterSelect = document.getElementById('counterSelect');
+            counterSelect.innerHTML = ''; // Clear previous options
+
+            let availableCounters = counters;
+
+            if (!forJoin && groupId !== null) {
+                const group = groups.find(g => g.id === groupId);
+                if (group) {
+                    const groupCounterIds = group.counters.map(c => c.id);
+                    availableCounters = counters.filter(c => groupCounterIds.includes(c.id));
+                }
+            }
+
+            availableCounters.forEach(counter => {
+                const option = document.createElement('option');
+                option.value = counter.id;
+                option.text = counter.counterName;
+                counterSelect.appendChild(option);
+            });
+
+            if (availableCounters.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.text = "No counters available";
+                counterSelect.appendChild(option);
+                counterSelect.disabled = true;
+            } else {
+                counterSelect.disabled = false;
+            }
+        }
+
+        // Close Counter Modal
+        function closeCounterModal() {
+            document.getElementById('counterModal').style.display = "none";
+        }
+
+        // Join Group
+        async function joinGroup() {
+            const counterId = parseInt(document.getElementById('counterSelect').value);
+            if (isNaN(counterId)) {
+                showCounterMessage("Please select a valid counter.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}Group/JoinGroupAsync?counterId=${counterId}&groupId=${currentActionGroupId}`, {
+                    method: 'POST',
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error joining group: ${response.statusText}`);
+                }
+
+                // Refresh the groups
+                await loadGroups();
+                showCounterMessage("Counter joined successfully.", "success");
+                setTimeout(() => { closeCounterModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showCounterMessage("Failed to join group.", "error");
+            }
+        }
+
+        // Leave Group
+        async function leaveGroup() {
+            const counterId = parseInt(document.getElementById('counterSelect').value);
+            if (isNaN(counterId)) {
+                showCounterMessage("Please select a valid counter.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}Group/LeaveGroupAsync?counterId=${counterId}&groupId=${currentActionGroupId}`, {
+                    method: 'POST',
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error leaving group: ${response.statusText}`);
+                }
+
+                // Refresh the groups
+                await loadGroups();
+                showCounterMessage("Counter left successfully.", "success");
+                setTimeout(() => { closeCounterModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showCounterMessage("Failed to leave group.", "error");
+            }
+        }
+
+        // Open Send Alert Modal
+        function openSendAlertModal(groupId) {
+            currentActionGroupId = groupId;
+            document.getElementById('sendAlertModalTitle').innerText = "Send Alert to Group";
+            document.getElementById('sendAlertSaveButton').style.display = "inline-block";
+            document.getElementById('sendAlertModal').style.display = "block";
+            document.getElementById('eventType').value = "";
+            document.getElementById('eventContent').value = "";
+            document.getElementById('identifier').value = "";
+            document.getElementById('controlType').value = "Default";
+            hideSendAlertMessages();
+        }
+
+        // Close Send Alert Modal
+        function closeSendAlertModal() {
+            document.getElementById('sendAlertModal').style.display = "none";
+        }
+
+        // Send Alert to Group
+        async function sendAlert() {
+            const eventType = document.getElementById('eventType').value;
+            const content = document.getElementById('eventContent').value.trim();
+            const identifier = document.getElementById('identifier').value.trim();
+            const controlType = document.getElementById('controlType').value;
+
+            if (!eventType || !content || !identifier) {
+                showSendAlertMessage("Please fill in all required fields.", "error");
+                return;
+            }
+
+            const pubSubEvent = {
+                EventType: eventType,
+                Content: content,
+                Identifier: identifier,
+                ControlType: controlType
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}Group/SendToGroup?groupId=${currentActionGroupId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pubSubEvent)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error sending alert: ${response.statusText}`);
+                }
+
+                showSendAlertMessage("Alert sent successfully.", "success");
+                setTimeout(() => { closeSendAlertModal(); }, 1500);
+            } catch (error) {
+                console.error(error);
+                showSendAlertMessage("Failed to send alert.", "error");
+            }
+        }
+
+        // Search groups by name
+        async function searchByGroupName() {
+            const searchValue = document.getElementById('searchInput').value.trim();
+            if (!searchValue) {
+                await loadGroups();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}Group?AdvancedSearch.Fields=GroupName&AdvancedSearch.Keyword=${encodeURIComponent(searchValue)}&Keyword=${encodeURIComponent(searchValue)}`);
+                if (!response.ok) {
+                    throw new Error(`Error searching groups: ${response.statusText}`);
+                }
+                const data = await response.json();
+                groups = data.items || [];
+                renderGroupTable();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to search groups.");
+            }
+        }
+
+        // Show Group Modal Messages
+        function showGroupMessage(message, type) {
+            const messageDiv = document.getElementById('groupMessage');
+            const successDiv = document.getElementById('groupSuccessMessage');
+            if (type === "error") {
+                messageDiv.innerText = message;
+                messageDiv.style.display = "block";
+                successDiv.style.display = "none";
+            } else if (type === "success") {
+                successDiv.innerText = message;
+                successDiv.style.display = "block";
+                messageDiv.style.display = "none";
+            }
+        }
+
+        // Hide Group Modal Messages
+        function hideGroupMessages() {
+            const messageDiv = document.getElementById('groupMessage');
+            const successDiv = document.getElementById('groupSuccessMessage');
+            messageDiv.style.display = "none";
+            successDiv.style.display = "none";
+        }
+
+        // Show Counter Modal Messages
+        function showCounterMessage(message, type) {
+            const messageDiv = document.getElementById('counterMessage');
+            const successDiv = document.getElementById('counterSuccessMessage');
+            if (type === "error") {
+                messageDiv.innerText = message;
+                messageDiv.style.display = "block";
+                successDiv.style.display = "none";
+            } else if (type === "success") {
+                successDiv.innerText = message;
+                successDiv.style.display = "block";
+                messageDiv.style.display = "none";
+            }
+        }
+
+        // Hide Counter Modal Messages
+        function hideCounterMessages() {
+            const messageDiv = document.getElementById('counterMessage');
+            const successDiv = document.getElementById('counterSuccessMessage');
+            messageDiv.style.display = "none";
+            successDiv.style.display = "none";
+        }
+
+        // Show Send Alert Modal Messages
+        function showSendAlertMessage(message, type) {
+            const messageDiv = document.getElementById('sendAlertMessage');
+            const successDiv = document.getElementById('sendAlertSuccessMessage');
+            if (type === "error") {
+                messageDiv.innerText = message;
+                messageDiv.style.display = "block";
+                successDiv.style.display = "none";
+            } else if (type === "success") {
+                successDiv.innerText = message;
+                successDiv.style.display = "block";
+                messageDiv.style.display = "none";
+            }
+        }
+
+        // Hide Send Alert Modal Messages
+        function hideSendAlertMessages() {
+            const messageDiv = document.getElementById('sendAlertMessage');
+            const successDiv = document.getElementById('sendAlertSuccessMessage');
+            messageDiv.style.display = "none";
+            successDiv.style.display = "none";
+        }
+
+        // Prevent closing modals by clicking outside or pressing Esc
+        window.onclick = function (event) {
+            const groupModal = document.getElementById('groupModal');
+            const counterModal = document.getElementById('counterModal');
+            const sendAlertModal = document.getElementById('sendAlertModal');
+            if (event.target === groupModal || event.target === counterModal || event.target === sendAlertModal) {
+                // Do nothing to prevent closing
+            }
+        }
+
+        window.addEventListener('keydown', function (event) {
+            if (event.key === "Escape") {
+                event.preventDefault();
+            }
+        });
+    </script>
+
+</body>
+</html>
