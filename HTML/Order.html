@@ -112,8 +112,10 @@
 
         // Open Customer Screen
         customerScreenButton.addEventListener("click", () => {
+            const width = window.screen.availWidth;
+            const height = window.screen.availHeight;
             const url = `customer.html?id=${counterId}&orderNumber=${orderModel.orderNumber}`;
-            window.open(url, '_blank');
+            window.open(url, '_blank', `toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=${width},height=${height},top=0,left=0`);
         });
 
         // Function to send event to open Add Item Modal on Customer Screen

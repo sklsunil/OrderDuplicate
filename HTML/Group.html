@@ -217,7 +217,7 @@
             </div>
             <div id="sendAlertMessage" class="error-message" style="display: none;"></div>
             <div id="sendAlertSuccessMessage" class="success-message" style="display: none;"></div>
-            <div class="form-group">
+            <!--<div class="form-group">
                 <label for="eventType">Event Type:</label>
                 <select id="eventType" required>
                     <option value="">Select Event Type</option>
@@ -226,12 +226,12 @@
                     <option value="Image">Image</option>
                     <option value="Custom">Custom</option>
                 </select>
-            </div>
+            </div>-->
             <div class="form-group">
                 <label for="eventContent">Content:</label>
                 <input type="text" id="eventContent" name="eventContent" required>
             </div>
-            <div class="form-group">
+            <!--<div class="form-group">
                 <label for="identifier">Identifier:</label>
                 <input type="text" id="identifier" name="identifier" required>
             </div>
@@ -242,7 +242,7 @@
                     <option value="Input">Input</option>
                     <option value="TextArea">TextArea</option>
                 </select>
-            </div>
+            </div>-->
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeSendAlertModal()">Cancel</button>
                 <button class="btn btn-primary" id="sendAlertSaveButton" onclick="sendAlert()">Send</button>
@@ -307,16 +307,16 @@
                     const counterNames = group.counters.map(counter => counter.counterName).join(', ');
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                                <td>${group.groupName}</td>
-                                <td>${counterNames}</td>
-                                <td>
-                                    <button class="btn btn-primary" onclick="openEditGroupModal(${group.id})">Edit</button>
-                                    <button class="btn btn-danger" onclick="deleteGroup(${group.id})">Remove</button>
-                                    <button class="btn btn-success" onclick="openJoinCounterModal(${group.id})">Join Counter</button>
-                                    <button class="btn btn-secondary" onclick="openLeaveCounterModal(${group.id})">Leave Group</button>
-                                    <button class="btn btn-info" onclick="openSendAlertModal(${group.id})">Send Alert</button>
-                                </td>
-                            `;
+                                        <td>${group.groupName}</td>
+                                        <td>${counterNames}</td>
+                                        <td>
+                                            <button class="btn btn-primary" onclick="openEditGroupModal(${group.id})">Edit</button>
+                                            <button class="btn btn-danger" onclick="deleteGroup(${group.id})">Remove</button>
+                                            <button class="btn btn-success" onclick="openJoinCounterModal(${group.id})">Join Counter</button>
+                                            <button class="btn btn-secondary" onclick="openLeaveCounterModal(${group.id})">Leave Group</button>
+                                            <button class="btn btn-info" onclick="openSendAlertModal(${group.id})">Send Alert</button>
+                                        </td>
+                                    `;
                     tableBody.appendChild(row);
                 });
             } else {
@@ -546,8 +546,8 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}Group/JoinGroupAsync?counterId=${counterId}&groupId=${currentActionGroupId}`, {
-                    method: 'POST',
+                const response = await fetch(`${API_BASE_URL}Group/JoinGroup?counterId=${counterId}&groupId=${currentActionGroupId}`, {
+                    method: 'GET',
                 });
 
                 if (!response.ok) {
@@ -573,8 +573,8 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}Group/LeaveGroupAsync?counterId=${counterId}&groupId=${currentActionGroupId}`, {
-                    method: 'POST',
+                const response = await fetch(`${API_BASE_URL}Group/LeaveGroup?counterId=${counterId}&groupId=${currentActionGroupId}`, {
+                    method: 'GET',
                 });
 
                 if (!response.ok) {
@@ -597,10 +597,10 @@
             document.getElementById('sendAlertModalTitle').innerText = "Send Alert to Group";
             document.getElementById('sendAlertSaveButton').style.display = "inline-block";
             document.getElementById('sendAlertModal').style.display = "block";
-            document.getElementById('eventType').value = "";
+            //document.getElementById('eventType').value = "";
             document.getElementById('eventContent').value = "";
-            document.getElementById('identifier').value = "";
-            document.getElementById('controlType').value = "Default";
+            //document.getElementById('identifier').value = "";
+            //document.getElementById('controlType').value = "Default";
             hideSendAlertMessages();
         }
 
@@ -611,25 +611,26 @@
 
         // Send Alert to Group
         async function sendAlert() {
-            const eventType = document.getElementById('eventType').value;
+            //const eventType = document.getElementById('eventType').value;
             const content = document.getElementById('eventContent').value.trim();
-            const identifier = document.getElementById('identifier').value.trim();
-            const controlType = document.getElementById('controlType').value;
+            //const identifier = document.getElementById('identifier').value.trim();
+            //const controlType = document.getElementById('controlType').value;
 
-            if (!eventType || !content || !identifier) {
+            if (!content) {
                 showSendAlertMessage("Please fill in all required fields.", "error");
                 return;
             }
 
             const pubSubEvent = {
-                EventType: eventType,
-                Content: content,
-                Identifier: identifier,
-                ControlType: controlType
+                EventType: 4,
+                Content: JSON.stringify({ action: "sendAlert", content }),
+                identifier: `alert`
+                //Identifier: identifier,
+                //ControlType: controlType
             };
 
             try {
-                const response = await fetch(`${API_BASE_URL}Group/SendToGroup?groupId=${currentActionGroupId}`, {
+                const response = await fetch(`${API_BASE_URL}WebPubSub/SendToGroup?groupId=${currentActionGroupId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

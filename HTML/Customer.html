@@ -124,6 +124,26 @@
         </div>
     </div>
 
+    <!-- Alert Modal -->
+    <div class="modal fade" id="alertModal" tabindex="-1" role="dialog" aria-labelledby="alertModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alertModalLabel">New Alert</h5>
+                    <button type="button" class="close" onclick="$('#alertModal').modal('hide')">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert-content" id="alertContent"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="$('#alertModal').modal('hide')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS and Dependencies -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
@@ -155,7 +175,7 @@
                     const data = JSON.parse(event.data);
                     const content = JSON.parse(data.Content);
 
-                    if (data.EventType === 1 || data.EventType === 2) {
+                    if (data.EventType === 1 || data.EventType === 2 || data.EventType === 4) {
                         if (data.EventType === 1) { // HTML Event
                             const { action, item } = content;
                             $('#customerAddItemModal').modal('hide');
@@ -184,6 +204,9 @@
                             if (action === "updateAd") {
                                 updateAdImage(adId, imageUrl);
                             }
+                            else if (action === "sendAlert") {
+                                showAlert(content.content);
+                            }
                         }
                     }
                     // Handle other EventTypes if necessary
@@ -203,6 +226,13 @@
             } catch (error) {
                 console.error('Error connecting to WebSocket on Customer Screen:', error);
             }
+        }
+
+        function showAlert(content) {
+            $('#alertModal').modal('hide');
+            const alertContent = document.getElementById("alertContent");
+            alertContent.textContent = content; // Show the alert content
+            $('#alertModal').modal('show'); // Open the modal
         }
 
         function updateAdImage(adId, imageUrl) {
@@ -228,11 +258,11 @@
                     row = document.createElement("tr");
                     row.id = itemRowId;
                     row.innerHTML = `
-                                        <td>${item.name}</td>
-                                        <td>${item.quantity}</td>
-                                        <td>${item.price.toFixed(2)}</td>
-                                        <td>${(item.quantity * item.price).toFixed(2)}</td>
-                                    `;
+                                            <td>${item.name}</td>
+                                            <td>${item.quantity}</td>
+                                            <td>${item.price.toFixed(2)}</td>
+                                            <td>${(item.quantity * item.price).toFixed(2)}</td>
+                                        `;
                     orderItems.appendChild(row);
                 }
             } else if (action === "remove") {

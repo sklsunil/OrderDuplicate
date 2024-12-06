@@ -191,7 +191,7 @@
         // Load counters from the server
         async function loadCounters() {
             try {
-                const response = await fetch(API_BASE_URL);
+                const response = await fetch(`${API_BASE_URL}/Counter`);
                 if (!response.ok) {
                     throw new Error(`Error fetching counters: ${response.statusText}`);
                 }
