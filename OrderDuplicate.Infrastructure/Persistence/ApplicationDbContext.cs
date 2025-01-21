@@ -1,6 +1,5 @@
 ﻿using OrderDuplicate.Application.Common.Interfaces;
 using OrderDuplicate.Domain.Common;
-using OrderDuplicate.Domain.Entities;
 using OrderDuplicate.Infrastructure.Persistence.Interceptors;
 
 using System.Reflection;
@@ -21,12 +20,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         _auditableEntitySaveChangesInterceptor = auditableEntitySaveChangesInterceptor;
     }
-
-    public DbSet<CounterEntity> Counters { get; set; }
-    public DbSet<OrderEntity> Orders { get; set; }
-    public DbSet<OrderLineItemEntity> OrderItems { get; set; }
-    public DbSet<GroupEntity> Groups { get; set; }
-    public DbSet<GroupCounterEntity> GroupCounters { get; set; }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

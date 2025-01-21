@@ -24,9 +24,4 @@ namespace OrderDuplicate.Domain.Models
         TextArea,
         Default
     }
-
-    public class FunctionPubSubEvent : PubSubEvent
-    {
-        public int SesstionId { get; set; }
-    }
 }
