@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "EventProcessHTTP": {
-      "commandName": "Project",
-      "commandLineArgs": "--port 7273",
-      "launchBrowser": false
-    }
-  }
-}
