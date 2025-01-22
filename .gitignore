@@ -24,3 +24,8 @@
 /OrderDuplicate.Application.IntegrationTests/bin
 /OrderDuplicate.Domain/bin/Release/net9.0
 /OrderDuplicate.Infrastructure/bin/Release/net9.0
+/EventProcessHTTP/Properties
+/OrderDuplicate/Server/bin/Debug/net8.0
+/OrderDuplicate.Application/bin/Debug/net8.0
+/OrderDuplicate.Domain/bin/Debug/net8.0
+/OrderDuplicate.Infrastructure/bin/Debug/net8.0
