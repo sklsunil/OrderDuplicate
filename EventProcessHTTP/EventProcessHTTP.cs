@@ -45,7 +45,7 @@ namespace EventProcessHTTP
 
         [FunctionName("HttpTriggerFunction")]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
